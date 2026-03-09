@@ -9,57 +9,26 @@
   <div><label>Max Waiting Days</label><input id='fMaxWait' type='number' min='0' placeholder='e.g. 180'></div>
 </div>
 <div class='card row'>
-  <select id='sortBy' style='max-width:220px'>
-    <option value='updated_desc'>Latest Updated</option>
-    <option value='apply_desc'>Latest Application Date</option>
-    <option value='wait_desc'>Longest Waiting</option>
-    <option value='wait_asc'>Shortest Waiting</option>
-  </select>
+  <select id='sortBy' style='max-width:220px'><option value='updated_desc'>Latest Updated</option><option value='apply_desc'>Latest Application Date</option><option value='wait_desc'>Longest Waiting</option><option value='wait_asc'>Shortest Waiting</option></select>
   <select id='pageSize' style='max-width:140px'><option value='10'>10 / page</option><option value='20' selected>20 / page</option><option value='50'>50 / page</option></select>
   <select id='viewMode' style='max-width:160px'><option value='table' selected>Table View</option><option value='card'>Card View</option></select>
-  <button id='saveFilter' style='max-width:180px'>Save Filter</button>
-  <select id='savedList' style='max-width:260px'><option value=''>Load Saved Filter...</option></select>
-  <button id='copyLink' style='max-width:180px'>Copy Share Link</button>
-  <span id='meta' class='small'></span>
+  <button id='saveFilter' style='max-width:180px'>Save Filter</button><select id='savedList' style='max-width:260px'><option value=''>Load Saved Filter...</option></select><button id='copyLink' style='max-width:180px'>Copy Share Link</button><span id='meta' class='small'></span>
 </div>
 <div id='tableWrap' class='card'><table class='table'><thead><tr><th>Type</th><th>Outcome</th><th>Industry</th><th>Income</th><th>Applied</th><th>Outcome Date</th><th>Waiting</th><th>Action</th></tr></thead><tbody id='tb'></tbody></table></div>
 <div id='cardWrap' class='grid' style='display:none'></div>
 <div class='card row'><button id='prev' style='max-width:120px'>Prev</button><span id='pageInfo' class='small'>Page 1</span><button id='next' style='max-width:120px'>Next</button></div>
-
-<dialog id='detailDlg' style='max-width:760px;width:92%;background:#0f172a;color:#e9eefc;border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:16px'>
-  <h3>Case Details</h3><div id='detailGrid' class='grid'></div><div style='margin-top:12px'><button onclick='detailDlg.close()'>Close</button></div>
-</dialog>
-
+<dialog id='detailDlg' style='max-width:760px;width:92%;background:#0f172a;color:#e9eefc;border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:16px'><h3>Case Details</h3><div id='detailGrid' class='grid'></div><div style='margin-top:12px'><button onclick='detailDlg.close()'>Close</button></div></dialog>
 </main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
-let currentPage=1, size=20, totalCount=0, pageItems=[];
+let currentPage=1,size=20,totalCount=0,pageItems=[]; const countCache=new Map();
+function key(){return JSON.stringify({t:fType.value||null,o:fOut.value||null,min:fMinWait.value||null,max:fMaxWait.value||null})}
 function applyQuery(){const u=new URL(location.href);fType.value=u.searchParams.get('type')||'';fOut.value=u.searchParams.get('out')||'';fMinWait.value=u.searchParams.get('minw')||'';fMaxWait.value=u.searchParams.get('maxw')||'';sortBy.value=u.searchParams.get('sort')||'updated_desc';currentPage=Number(u.searchParams.get('p')||1);size=Number(u.searchParams.get('s')||20);pageSize.value=String(size);viewMode.value=u.searchParams.get('v')||'table'}
 function syncQuery(){const u=new URL(location.href); [['type',fType.value],['out',fOut.value],['minw',fMinWait.value],['maxw',fMaxWait.value],['sort',sortBy.value],['p',currentPage],['s',size],['v',viewMode.value]].forEach(([k,v])=>{if(v!==''&&v!=null)u.searchParams.set(k,String(v)); else u.searchParams.delete(k)}); history.replaceState({},'',u)}
 function field(label,val){return `<div class='card' style='margin:0'><div class='small'>${label}</div><div>${val??'-'}</div></div>`}
-function openDetail(r){detailGrid.innerHTML=[field('Application Type',r.application_type),field('Outcome Status',r.outcome_status),field('Industry',r.industry),field('Income Band',r.income_band),field('Nationality',r.nationality),field('Marital Status',r.marital_status),field('Family Application',r.family_application),field('Children Count',r.children_count),field('Education',r.education_level),field('Applied Date',fmtDate(r.application_date)),field('Outcome Date',fmtDate(r.outcome_date)),field('Waiting Days',r.waiting_days),field('Notes',r.free_text_notes||'-')].join(''); detailDlg.showModal();}
+function openDetail(r){detailGrid.innerHTML=[field('Application Type',r.application_type),field('Outcome Status',r.outcome_status),field('Industry',r.industry),field('Income Band',r.income_band),field('Nationality',r.nationality),field('Marital Status',r.marital_status),field('Family Application',r.family_application),field('Children Count',r.children_count),field('Education',r.education_level),field('Applied Date',fmtDate(r.application_date)),field('Outcome Date',fmtDate(r.outcome_date)),field('Waiting Days',r.waiting_days),field('Notes',r.free_text_notes||'-')].join(''); detailDlg.showModal()}
 window.openDetailByIndex=(i)=>openDetail(pageItems[i]);
-async function fetchPage(){
-  meta.textContent='Loading...';
-  let q=sb.from('public_cases_with_tags_view').select('*',{count:'exact'});
-  if(fType.value) q=q.eq('application_type',fType.value);
-  if(fOut.value) q=q.eq('outcome_status',fOut.value);
-  if(fMinWait.value) q=q.gte('waiting_days',Number(fMinWait.value));
-  if(fMaxWait.value) q=q.lte('waiting_days',Number(fMaxWait.value));
-  if(sortBy.value==='wait_desc') q=q.order('waiting_days',{ascending:false,nullsFirst:false});
-  else if(sortBy.value==='wait_asc') q=q.order('waiting_days',{ascending:true,nullsFirst:false});
-  else if(sortBy.value==='apply_desc') q=q.order('application_date',{ascending:false,nullsFirst:false});
-  else q=q.order('updated_at',{ascending:false,nullsFirst:false});
-  const from=(currentPage-1)*size, to=from+size-1;
-  const {data,error,count}=await q.range(from,to);
-  if(error){meta.textContent=error.message; return}
-  pageItems=data||[]; totalCount=count||0; render();
-}
-function renderCards(items){cardWrap.innerHTML=items.map((r,idx)=>`<article class='card'><h3>${r.application_type||'-'} · ${r.outcome_status||'-'}</h3><p class='small'>Industry: ${r.industry||'-'} · Income: ${r.income_band||'-'}</p><p class='small'>Applied: ${fmtDate(r.application_date)} · Outcome: ${fmtDate(r.outcome_date)} · Waiting: ${r.waiting_days??'-'} days</p><button onclick='openDetailByIndex(${idx})'>Details</button></article>`).join('')}
-function render(){
-  tb.innerHTML=pageItems.map((r,idx)=>`<tr><td>${r.application_type||'-'}</td><td>${r.outcome_status||'-'}</td><td>${r.industry||'-'}</td><td>${r.income_band||'-'}</td><td>${fmtDate(r.application_date)}</td><td>${fmtDate(r.outcome_date)}</td><td>${r.waiting_days??'-'}</td><td><button onclick='openDetailByIndex(${idx})'>Details</button></td></tr>`).join('');
-  renderCards(pageItems); const totalPages=Math.max(1,Math.ceil(totalCount/size)); currentPage=Math.max(1,Math.min(currentPage,totalPages));
-  tableWrap.style.display=viewMode.value==='card'?'none':'block'; cardWrap.style.display=viewMode.value==='card'?'grid':'none';
-  meta.textContent=`${totalCount} result(s)`; pageInfo.textContent=`Page ${currentPage}/${totalPages}`; prev.disabled=currentPage<=1; next.disabled=currentPage>=totalPages; syncQuery();
-}
+function baseQuery(withCount=false){let q=sb.from('public_cases_with_tags_view').select('*',withCount?{count:'exact'}:undefined); if(fType.value)q=q.eq('application_type',fType.value); if(fOut.value)q=q.eq('outcome_status',fOut.value); if(fMinWait.value)q=q.gte('waiting_days',Number(fMinWait.value)); if(fMaxWait.value)q=q.lte('waiting_days',Number(fMaxWait.value)); if(sortBy.value==='wait_desc') q=q.order('waiting_days',{ascending:false,nullsFirst:false}); else if(sortBy.value==='wait_asc') q=q.order('waiting_days',{ascending:true,nullsFirst:false}); else if(sortBy.value==='apply_desc') q=q.order('application_date',{ascending:false,nullsFirst:false}); else q=q.order('updated_at',{ascending:false,nullsFirst:false}); return q;}
+async function fetchPage(){meta.textContent='Loading...'; const from=(currentPage-1)*size,to=from+size-1; const k=key(); let useCount=!countCache.has(k)||currentPage===1; const {data,error,count}=await baseQuery(useCount).range(from,to); if(error){meta.textContent=error.message; return} pageItems=data||[]; if(useCount){totalCount=count||0; countCache.set(k,totalCount)} else totalCount=countCache.get(k)||0; render()}
+function render(){tb.innerHTML=pageItems.map((r,idx)=>`<tr><td>${r.application_type||'-'}</td><td>${r.outcome_status||'-'}</td><td>${r.industry||'-'}</td><td>${r.income_band||'-'}</td><td>${fmtDate(r.application_date)}</td><td>${fmtDate(r.outcome_date)}</td><td>${r.waiting_days??'-'}</td><td><button onclick='openDetailByIndex(${idx})'>Details</button></td></tr>`).join(''); cardWrap.innerHTML=pageItems.map((r,idx)=>`<article class='card'><h3>${r.application_type||'-'} · ${r.outcome_status||'-'}</h3><p class='small'>Industry: ${r.industry||'-'} · Income: ${r.income_band||'-'}</p><p class='small'>Applied: ${fmtDate(r.application_date)} · Outcome: ${fmtDate(r.outcome_date)} · Waiting: ${r.waiting_days??'-'} days</p><button onclick='openDetailByIndex(${idx})'>Details</button></article>`).join(''); const totalPages=Math.max(1,Math.ceil(totalCount/size)); currentPage=Math.max(1,Math.min(currentPage,totalPages)); tableWrap.style.display=viewMode.value==='card'?'none':'block'; cardWrap.style.display=viewMode.value==='card'?'grid':'none'; meta.textContent=`${totalCount} result(s)`; pageInfo.textContent=`Page ${currentPage}/${totalPages}`; prev.disabled=currentPage<=1; next.disabled=currentPage>=totalPages; syncQuery()}
 async function loadSavedFilters(){const {data:{user}}=await sb.auth.getUser(); if(!user) return; const {data}=await sb.from('saved_filters').select('id,name,filter_json').eq('user_id',user.id).order('created_at',{ascending:false}).limit(30); const arr=data||[]; savedList.innerHTML="<option value=''>Load Saved Filter...</option>"+arr.map(x=>`<option value='${x.id}'>${x.name}</option>`).join(''); window._saved=arr}
 (async()=>{applyQuery(); await fetchPage(); loadSavedFilters();})();
 [fType,fOut,fMinWait,fMaxWait,sortBy].forEach(el=>el.onchange=async()=>{currentPage=1;await fetchPage()}); pageSize.onchange=async()=>{size=Number(pageSize.value)||20; currentPage=1; await fetchPage()}; viewMode.onchange=render; prev.onclick=async()=>{currentPage--;await fetchPage()}; next.onclick=async()=>{currentPage++;await fetchPage()};

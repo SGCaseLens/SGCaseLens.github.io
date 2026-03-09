@@ -1,27 +1,36 @@
 <!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Submit</title><link rel='stylesheet' href='../assets/style.css'></head><body><main class='wrap'>
 <nav class='nav'><b>SG Application Insights</b><div class='menu'><a href='../index.html'>Dashboard</a><a href='cases.html'>Cases</a><a class='active' href='submit.html'>Submit</a><a href='insights.html'>Insights</a><a href='trends.html'>Trends</a><a href='auth.html'>Auth</a><a href='admin.html'>Admin</a></div></nav>
 <form class='card grid' id='fm'>
-<div class='two'><div><label>Nickname</label><input name='nickname' maxlength='60'></div><div><label>Application Type*</label><select name='application_type' required><option>PR</option><option>Citizen</option><option>LTVP</option></select></div></div>
+<div class='two'><div><label>Nickname</label><input name='nickname' maxlength='60'><div id='err_nickname' class='small'></div></div><div><label>Application Type*</label><select name='application_type' required><option>PR</option><option>Citizen</option><option>LTVP</option></select><div id='err_application_type' class='small'></div></div></div>
 <div class='two'><div><label>Permit Type</label><input name='permit_type'></div><div><label>Nationality</label><input name='nationality'></div></div>
 <div class='two'><div><label>Gender</label><select name='gender'><option value=''>-</option><option>male</option><option>female</option><option>other</option></select></div><div><label>Age Group</label><input name='age_group' placeholder='e.g. 25-34'></div></div>
 <div class='two'><div><label>Marital Status</label><input name='marital_status'></div><div><label>Family Application</label><select name='family_application'><option value='false'>No</option><option value='true'>Yes</option></select></div></div>
-<div class='two'><div><label>Children Count</label><input name='children_count' type='number' min='0' value='0'></div><div><label>Child School Type</label><input name='child_school_type'></div></div>
+<div class='two'><div><label>Children Count</label><input name='children_count' type='number' min='0' value='0'><div id='err_children_count' class='small'></div></div><div><label>Child School Type</label><input name='child_school_type'></div></div>
 <div class='two'><div><label>Education Level</label><input name='education_level'></div><div><label>Industry</label><input name='industry'></div></div>
-<div class='two'><div><label>Income Band</label><input name='income_band' placeholder='e.g. 5k-8k'></div><div><label>Years in SG</label><input name='years_in_sg' type='number' step='0.1'></div></div>
-<div class='two'><div><label>Application Date</label><input name='application_date' type='date'></div><div><label>Outcome Date</label><input name='outcome_date' type='date'></div></div>
+<div class='two'><div><label>Income Band</label><input name='income_band' placeholder='e.g. 5k-8k'></div><div><label>Years in SG</label><input name='years_in_sg' type='number' step='0.1'><div id='err_years_in_sg' class='small'></div></div></div>
+<div class='two'><div><label>Application Date</label><input name='application_date' type='date'></div><div><label>Outcome Date</label><input name='outcome_date' type='date'><div id='err_outcome_date' class='small'></div></div></div>
 <div class='two'><div><label>Outcome Status*</label><select name='outcome_status' required><option>pending</option><option>approved</option><option>rejected</option><option>appealed</option></select></div><div><label>Appealed</label><select name='appealed'><option value='false'>No</option><option value='true'>Yes</option></select></div></div>
 <div class='two'><div><label>Asked for More Docs</label><select name='asked_for_more_docs'><option value='false'>No</option><option value='true'>Yes</option></select></div><div><label>Appeal Status</label><input name='appeal_status'></div></div>
-<div><label>Free Text Notes</label><textarea name='free_text_notes' rows='4' maxlength='1200'></textarea></div>
+<div><label>Free Text Notes</label><textarea name='free_text_notes' rows='4' maxlength='1200'></textarea><div id='err_free_text_notes' class='small'></div></div>
 <button>Submit Case</button><p class='small' id='msg'></p>
 </form>
 </main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
 function toBool(v){return String(v)==='true'}
 const blockedWords=['telegram','whatsapp','loan','casino','赌博','色情','spam'];
+function setErr(field,msg){const el=document.getElementById('err_'+field); if(el) el.textContent=msg||''}
+function clearErr(){['nickname','application_type','children_count','years_in_sg','outcome_date','free_text_notes'].forEach(f=>setErr(f,''))}
+function validate(o){clearErr(); let ok=true;
+if(o.nickname&&o.nickname.length>60){setErr('nickname','Max 60 chars'); ok=false}
+if(o.children_count!==null&&Number(o.children_count)<0){setErr('children_count','Must be >= 0'); ok=false}
+if(o.years_in_sg!==null&&Number(o.years_in_sg)<0){setErr('years_in_sg','Must be >= 0'); ok=false}
+if(o.application_date&&o.outcome_date&&new Date(o.outcome_date)<new Date(o.application_date)){setErr('outcome_date','Cannot be earlier than application date'); ok=false}
+if((o.free_text_notes||'').length>1200){setErr('free_text_notes','Max 1200 chars'); ok=false}
+const risk=blockedWords.find(w=>(o.free_text_notes||'').toLowerCase().includes(w.toLowerCase())); if(risk){setErr('free_text_notes',`Risk word detected: ${risk}`); ok=false}
+return ok;
+}
 fm.onsubmit=async(e)=>{e.preventDefault();const fd=new FormData(fm);const o=Object.fromEntries(fd.entries());
-if(o.application_date&&o.outcome_date&&new Date(o.outcome_date)<new Date(o.application_date)){msg.textContent='Outcome date cannot be earlier than application date';return}
-if((o.free_text_notes||'').length>1200){msg.textContent='Notes too long (max 1200 chars).';return}
-const risk=blockedWords.find(w=>(o.free_text_notes||'').toLowerCase().includes(w.toLowerCase())); if(risk){msg.textContent=`Risk word detected: ${risk}. Please revise notes.`;return}
 for (const k in o){if(o[k]==='') o[k]=null}
+if(!validate(o)){msg.textContent='Please fix validation errors.'; return}
 o.family_application=toBool(o.family_application); o.appealed=toBool(o.appealed); o.asked_for_more_docs=toBool(o.asked_for_more_docs); o.children_count=Number(o.children_count||0);
 o.moderation_status='pending_review';o.source_type='manual';
 const {data:{user}}=await sb.auth.getUser(); o.user_id=user?.id||null;
@@ -29,5 +38,5 @@ if (o.user_id && o.application_type && o.application_date) {
   const {data:dup, error:dupErr} = await sb.from('submissions').select('id').eq('user_id', o.user_id).eq('application_type', o.application_type).eq('application_date', o.application_date).limit(1);
   if (!dupErr && dup && dup.length) { msg.textContent='Potential duplicate detected: same application type and application date already submitted by your account.'; return; }
 }
-const {error}=await sb.from('submissions').insert(o); msg.textContent=error?`Failed: ${error.message}`:'Submitted. It will be visible after moderation approval.'; if(!error) fm.reset();}
+const {error}=await sb.from('submissions').insert(o); msg.textContent=error?`Failed: ${error.message}`:'Submitted. It will be visible after moderation approval.'; if(!error) {fm.reset(); clearErr();}}
 </script></body></html>
