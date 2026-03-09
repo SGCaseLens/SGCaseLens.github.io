@@ -4,7 +4,17 @@
   <div><label>Application Type</label><select id='fType'><option value=''>All</option><option>PR</option><option>Citizen</option><option>LTVP</option></select></div>
   <div><label>Outcome</label><select id='fOut'><option value=''>All</option><option>approved</option><option>rejected</option><option>pending</option><option>appealed</option></select></div>
 </div>
+<div class='card two'>
+  <div><label>Min Waiting Days</label><input id='fMinWait' type='number' min='0' placeholder='e.g. 30'></div>
+  <div><label>Max Waiting Days</label><input id='fMaxWait' type='number' min='0' placeholder='e.g. 180'></div>
+</div>
 <div class='card row'>
+  <select id='sortBy' style='max-width:220px'>
+    <option value='updated_desc'>Latest Updated</option>
+    <option value='apply_desc'>Latest Application Date</option>
+    <option value='wait_desc'>Longest Waiting</option>
+    <option value='wait_asc'>Shortest Waiting</option>
+  </select>
   <select id='pageSize' style='max-width:140px'><option value='10'>10 / page</option><option value='20' selected>20 / page</option><option value='50'>50 / page</option></select>
   <select id='viewMode' style='max-width:160px'><option value='table' selected>Table View</option><option value='card'>Card View</option></select>
   <button id='saveFilter' style='max-width:180px'>Save Filter</button>
@@ -24,28 +34,20 @@
 
 </main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
 let all=[], currentPage=1, size=20; const tb=document.getElementById('tb'); const cardWrap=document.getElementById('cardWrap');
-function applyQuery(){const u=new URL(location.href);fType.value=u.searchParams.get('type')||'';fOut.value=u.searchParams.get('out')||'';currentPage=Number(u.searchParams.get('p')||1);size=Number(u.searchParams.get('s')||20);pageSize.value=String(size);viewMode.value=u.searchParams.get('v')||'table'}
-function syncQuery(){const u=new URL(location.href); if(fType.value)u.searchParams.set('type',fType.value); else u.searchParams.delete('type'); if(fOut.value)u.searchParams.set('out',fOut.value); else u.searchParams.delete('out'); u.searchParams.set('p',String(currentPage)); u.searchParams.set('s',String(size)); u.searchParams.set('v',viewMode.value); history.replaceState({},'',u)}
-function filtered(){const t=fType.value,o=fOut.value;return all.filter(r=>(!t||r.application_type===t)&&(!o||r.outcome_status===o))}
-function field(label,val){return `<div class='card' style='margin:0'><div class='small'>${label}</div><div>${val??'-'}</div></div>`}
-function openDetail(r){
-  detailGrid.innerHTML = [
-    field('Application Type', r.application_type),
-    field('Outcome Status', r.outcome_status),
-    field('Industry', r.industry),
-    field('Income Band', r.income_band),
-    field('Nationality', r.nationality),
-    field('Marital Status', r.marital_status),
-    field('Family Application', r.family_application),
-    field('Children Count', r.children_count),
-    field('Education', r.education_level),
-    field('Applied Date', fmtDate(r.application_date)),
-    field('Outcome Date', fmtDate(r.outcome_date)),
-    field('Waiting Days', r.waiting_days),
-    field('Notes', r.free_text_notes || '-')
-  ].join('');
-  detailDlg.showModal();
+function applyQuery(){const u=new URL(location.href);fType.value=u.searchParams.get('type')||'';fOut.value=u.searchParams.get('out')||'';fMinWait.value=u.searchParams.get('minw')||'';fMaxWait.value=u.searchParams.get('maxw')||'';sortBy.value=u.searchParams.get('sort')||'updated_desc';currentPage=Number(u.searchParams.get('p')||1);size=Number(u.searchParams.get('s')||20);pageSize.value=String(size);viewMode.value=u.searchParams.get('v')||'table'}
+function syncQuery(){const u=new URL(location.href); [['type',fType.value],['out',fOut.value],['minw',fMinWait.value],['maxw',fMaxWait.value],['sort',sortBy.value],['p',currentPage],['s',size],['v',viewMode.value]].forEach(([k,v])=>{if(v!==''&&v!=null)u.searchParams.set(k,String(v)); else u.searchParams.delete(k)}); history.replaceState({},'',u)}
+function filtered(){
+  const t=fType.value,o=fOut.value,min=fMinWait.value?Number(fMinWait.value):null,max=fMaxWait.value?Number(fMaxWait.value):null;
+  let x=all.filter(r=>(!t||r.application_type===t)&&(!o||r.outcome_status===o));
+  x=x.filter(r=>{const w=r.waiting_days; if(w==null) return min==null&&max==null; if(min!=null&&w<min) return false; if(max!=null&&w>max) return false; return true;});
+  if(sortBy.value==='wait_desc') x.sort((a,b)=>(b.waiting_days??-1)-(a.waiting_days??-1));
+  else if(sortBy.value==='wait_asc') x.sort((a,b)=>(a.waiting_days??1e9)-(b.waiting_days??1e9));
+  else if(sortBy.value==='apply_desc') x.sort((a,b)=>new Date(b.application_date||0)-new Date(a.application_date||0));
+  else x.sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
+  return x;
 }
+function field(label,val){return `<div class='card' style='margin:0'><div class='small'>${label}</div><div>${val??'-'}</div></div>`}
+function openDetail(r){detailGrid.innerHTML=[field('Application Type',r.application_type),field('Outcome Status',r.outcome_status),field('Industry',r.industry),field('Income Band',r.income_band),field('Nationality',r.nationality),field('Marital Status',r.marital_status),field('Family Application',r.family_application),field('Children Count',r.children_count),field('Education',r.education_level),field('Applied Date',fmtDate(r.application_date)),field('Outcome Date',fmtDate(r.outcome_date)),field('Waiting Days',r.waiting_days),field('Notes',r.free_text_notes||'-')].join(''); detailDlg.showModal();}
 function renderCards(pageItems){cardWrap.innerHTML=pageItems.map((r,idx)=>`<article class='card'><h3>${r.application_type||'-'} · ${r.outcome_status||'-'}</h3><p class='small'>Industry: ${r.industry||'-'} · Income: ${r.income_band||'-'}</p><p class='small'>Applied: ${fmtDate(r.application_date)} · Outcome: ${fmtDate(r.outcome_date)} · Waiting: ${r.waiting_days??'-'} days</p><button onclick='openDetailByIndex(${idx})'>Details</button></article>`).join(''); window._pageItems=pageItems}
 window.openDetailByIndex=(i)=>openDetail((window._pageItems||[])[i]);
 function render(){const x=filtered(); const totalPages=Math.max(1,Math.ceil(x.length/size)); currentPage=Math.max(1,Math.min(currentPage,totalPages)); const start=(currentPage-1)*size; const pageItems=x.slice(start,start+size);
@@ -54,11 +56,11 @@ renderCards(pageItems);
 const card=viewMode.value==='card'; tableWrap.style.display=card?'none':'block'; cardWrap.style.display=card?'grid':'none';
 meta.textContent=`${x.length} result(s)`; pageInfo.textContent=`Page ${currentPage}/${totalPages}`; prev.disabled=currentPage<=1; next.disabled=currentPage>=totalPages; syncQuery()}
 async function loadSavedFilters(){const {data:{user}}=await sb.auth.getUser(); if(!user) return; const {data}=await sb.from('saved_filters').select('id,name,filter_json').eq('user_id',user.id).order('created_at',{ascending:false}).limit(30); const arr=data||[]; savedList.innerHTML="<option value=''>Load Saved Filter...</option>"+arr.map(x=>`<option value='${x.id}'>${x.name}</option>`).join(''); window._saved=arr}
-(async()=>{applyQuery();const {data,error}=await sb.from('public_cases_with_tags_view').select('*').order('created_at',{ascending:false}).limit(1000); if(error){alert(error.message);return;} all=data||[]; render(); loadSavedFilters();})();
-fType.onchange=fOut.onchange=()=>{currentPage=1;render()}; pageSize.onchange=()=>{size=Number(pageSize.value)||20; currentPage=1; render()}; viewMode.onchange=render; prev.onclick=()=>{currentPage--;render()}; next.onclick=()=>{currentPage++;render()};
+(async()=>{applyQuery();const {data,error}=await sb.from('public_cases_with_tags_view').select('*').order('created_at',{ascending:false}).limit(2000); if(error){alert(error.message);return;} all=data||[]; render(); loadSavedFilters();})();
+[fType,fOut,fMinWait,fMaxWait,sortBy].forEach(el=>el.onchange=()=>{currentPage=1;render()}); pageSize.onchange=()=>{size=Number(pageSize.value)||20; currentPage=1; render()}; viewMode.onchange=render; prev.onclick=()=>{currentPage--;render()}; next.onclick=()=>{currentPage++;render()};
 copyLink.onclick=async()=>{await navigator.clipboard.writeText(location.href);meta.textContent='Share link copied.'}
 saveFilter.onclick=async()=>{const {data:{user}}=await sb.auth.getUser(); if(!user){meta.textContent='Login required to save filters.';return}
-const payload={user_id:user.id,name:`${fType.value||'All'}-${fOut.value||'All'}-${new Date().toISOString().slice(0,10)}`,filter_json:{type:fType.value||null,out:fOut.value||null,size,page:currentPage,view:viewMode.value}};
+const payload={user_id:user.id,name:`${fType.value||'All'}-${fOut.value||'All'}-${new Date().toISOString().slice(0,10)}`,filter_json:{type:fType.value||null,out:fOut.value||null,minw:fMinWait.value||null,maxw:fMaxWait.value||null,sort:sortBy.value,size,page:currentPage,view:viewMode.value}};
 const {error}=await sb.from('saved_filters').insert(payload); meta.textContent=error?error.message:'Filter saved.'; if(!error) loadSavedFilters();}
-savedList.onchange=()=>{const it=(window._saved||[]).find(x=>x.id===savedList.value); if(!it) return; const f=it.filter_json||{}; fType.value=f.type||''; fOut.value=f.out||''; size=Number(f.size||20); pageSize.value=String(size); currentPage=Number(f.page||1); viewMode.value=f.view||'table'; render(); meta.textContent='Saved filter loaded.'}
+savedList.onchange=()=>{const it=(window._saved||[]).find(x=>x.id===savedList.value); if(!it) return; const f=it.filter_json||{}; fType.value=f.type||''; fOut.value=f.out||''; fMinWait.value=f.minw||''; fMaxWait.value=f.maxw||''; sortBy.value=f.sort||'updated_desc'; size=Number(f.size||20); pageSize.value=String(size); currentPage=Number(f.page||1); viewMode.value=f.view||'table'; render(); meta.textContent='Saved filter loaded.'}
 </script></body></html>

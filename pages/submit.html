@@ -22,5 +22,10 @@ for (const k in o){if(o[k]==='') o[k]=null}
 o.family_application=toBool(o.family_application); o.appealed=toBool(o.appealed); o.asked_for_more_docs=toBool(o.asked_for_more_docs); o.children_count=Number(o.children_count||0);
 o.moderation_status='pending_review';o.source_type='manual';
 const {data:{user}}=await sb.auth.getUser(); o.user_id=user?.id||null;
+// duplicate check (same user + type + app date in last 30 records)
+if (o.user_id && o.application_type && o.application_date) {
+  const {data:dup, error:dupErr} = await sb.from('submissions').select('id').eq('user_id', o.user_id).eq('application_type', o.application_type).eq('application_date', o.application_date).limit(1);
+  if (!dupErr && dup && dup.length) { msg.textContent='Potential duplicate detected: same application type and application date already submitted by your account.'; return; }
+}
 const {error}=await sb.from('submissions').insert(o); msg.textContent=error?`Failed: ${error.message}`:'Submitted. It will be visible after moderation approval.'; if(!error) fm.reset();}
 </script></body></html>
