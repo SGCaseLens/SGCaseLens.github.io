@@ -1,0 +1,12 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Trends</title><link rel='stylesheet' href='../assets/style.css'></head><body><main class='wrap'>
+<nav class='nav'><b>SG Application Insights</b><div class='menu'><a href='../index.html'>Dashboard</a><a href='cases.html'>Cases</a><a href='submit.html'>Submit</a><a href='insights.html'>Insights</a><a class='active' href='trends.html'>Trends</a><a href='auth.html'>Auth</a><a href='admin.html'>Admin</a></div></nav>
+<div class='card'><h3>Trend Center</h3><p class='small'>Based on platform samples, these charts show descriptive historical trends.</p></div>
+<div class='two'><div class='card'><div id='industry' style='height:320px'></div></div><div class='card'><div id='income' style='height:320px'></div></div></div>
+</main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='https://cdn.jsdelivr.net/npm/echarts@5'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
+(async()=>{const {data,error}=await sb.from('public_cases_view').select('industry,income_band'); if(error){alert(error.message);return}
+const arr=data||[]; const count=(k)=>{const m={};arr.forEach(x=>{const v=(x[k]||'Unknown').trim();m[v]=(m[v]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,10)};
+const i=count('industry'), n=count('income_band');
+const c1=echarts.init(document.getElementById('industry')); c1.setOption({title:{text:'Top Industries',textStyle:{color:'#e9eefc'}},xAxis:{type:'category',data:i.map(x=>x[0]),axisLabel:{color:'#9fb0ce',rotate:25}},yAxis:{type:'value',axisLabel:{color:'#9fb0ce'}},series:[{type:'bar',data:i.map(x=>x[1])}],grid:{left:40,right:10,top:50,bottom:70}});
+const c2=echarts.init(document.getElementById('income')); c2.setOption({title:{text:'Income Band Distribution',textStyle:{color:'#e9eefc'}},series:[{type:'pie',radius:['40%','70%'],data:n.map(([name,value])=>({name,value}))}],textStyle:{color:'#e9eefc'}});
+})();
+</script></body></html>
