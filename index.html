@@ -12,12 +12,14 @@ kTotal.textContent=arr.length; k30.textContent=arr.filter(x=>now-new Date(x.crea
 const c={approved:0,rejected:0,pending:0,appealed:0}; arr.forEach(x=>c[x.outcome_status]=(c[x.outcome_status]||0)+1); kA.textContent=c.approved||0; kR.textContent=c.rejected||0; kP.textContent=c.pending||0;
 const ws=arr.map(x=>x.waiting_days).filter(v=>v!=null).sort((a,b)=>a-b); kW.textContent=ws.length?Math.round(ws.reduce((a,b)=>a+b,0)/ws.length):'-';
 const bucket={}; arr.forEach(x=>{const d=new Date(x.created_at); const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; bucket[k]=(bucket[k]||0)+1}); const ks=Object.keys(bucket).sort();
+if(window._charts){window._charts.forEach(c=>c.dispose());}
 const trend=echarts.init(document.getElementById('trend')); trend.setOption({title:{text:'Monthly New Cases',textStyle:{color:'#e9eefc'}},xAxis:{type:'category',data:ks,axisLabel:{color:'#9fb0ce'}},yAxis:{type:'value',axisLabel:{color:'#9fb0ce'}},series:[{data:ks.map(k=>bucket[k]),type:'line',smooth:true}],grid:{left:40,right:10,top:50,bottom:30}});
 const pie=echarts.init(document.getElementById('statusPie')); pie.setOption({title:{text:'Outcome Distribution',textStyle:{color:'#e9eefc'}},series:[{type:'pie',radius:['45%','70%'],data:Object.entries(c).map(([k,v])=>({name:k,value:v}))}],textStyle:{color:'#e9eefc'}});
 const byType={}; arr.forEach(x=>{const t=x.application_type||'Unknown'; byType[t]=(byType[t]||0)+1}); const tk=Object.keys(byType);
 const typeBar=echarts.init(document.getElementById('typeBar')); typeBar.setOption({title:{text:'Application Type Distribution',textStyle:{color:'#e9eefc'}},xAxis:{type:'category',data:tk,axisLabel:{color:'#9fb0ce'}},yAxis:{type:'value',axisLabel:{color:'#9fb0ce'}},series:[{type:'bar',data:tk.map(k=>byType[k])}],grid:{left:40,right:10,top:50,bottom:40}});
 const box=echarts.init(document.getElementById('waitBox')); const min=ws[0]??0,max=ws[ws.length-1]??0,q1=quantile(ws,0.25)??0,med=quantile(ws,0.5)??0,q3=quantile(ws,0.75)??0;
 box.setOption({title:{text:'Waiting Days Box Summary',textStyle:{color:'#e9eefc'}},xAxis:{type:'category',data:['All Samples'],axisLabel:{color:'#9fb0ce'}},yAxis:{type:'value',axisLabel:{color:'#9fb0ce'}},series:[{type:'boxplot',data:[[min,q1,med,q3,max]]}],grid:{left:40,right:10,top:50,bottom:40}});
+window._charts=[trend,pie,typeBar,box];
 recentTb.innerHTML=arr.slice(0,10).map(r=>`<tr><td>${r.application_type||'-'}</td><td>${r.outcome_status||'-'}</td><td>${r.industry||'-'}</td><td>${fmtDate(r.application_date)}</td><td>${fmtDate(r.updated_at||r.created_at)}</td></tr>`).join('');
 }
 (async()=>{const cacheKey='sg_dashboard_cache_v2'; const cache=localStorage.getItem(cacheKey); let arr=[]; if(cache){try{const o=JSON.parse(cache); if(Date.now()-o.ts<300000){arr=o.data||[];}}catch{}}
@@ -26,5 +28,6 @@ const observer=new IntersectionObserver((entries)=>{
   entries.forEach(e=>{ if(e.isIntersecting){ drawAll(arr); observer.disconnect(); } });
 },{threshold:0.1});
 document.querySelectorAll('.chart-slot').forEach(el=>observer.observe(el));
+window.addEventListener('resize',()=>{ if(window._charts){window._charts.forEach(c=>c.resize());} });
 })();
 </script></body></html>

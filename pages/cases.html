@@ -31,7 +31,18 @@ async function fetchPage(){meta.textContent='Loading...'; const from=(currentPag
 function render(){tb.innerHTML=pageItems.map((r,idx)=>`<tr><td>${r.application_type||'-'}</td><td>${r.outcome_status||'-'}</td><td>${r.industry||'-'}</td><td>${r.income_band||'-'}</td><td>${fmtDate(r.application_date)}</td><td>${fmtDate(r.outcome_date)}</td><td>${r.waiting_days??'-'}</td><td><button onclick='openDetailByIndex(${idx})'>Details</button></td></tr>`).join(''); cardWrap.innerHTML=pageItems.map((r,idx)=>`<article class='card'><h3>${r.application_type||'-'} · ${r.outcome_status||'-'}</h3><p class='small'>Industry: ${r.industry||'-'} · Income: ${r.income_band||'-'}</p><p class='small'>Applied: ${fmtDate(r.application_date)} · Outcome: ${fmtDate(r.outcome_date)} · Waiting: ${r.waiting_days??'-'} days</p><button onclick='openDetailByIndex(${idx})'>Details</button></article>`).join(''); const totalPages=Math.max(1,Math.ceil(totalCount/size)); currentPage=Math.max(1,Math.min(currentPage,totalPages)); tableWrap.style.display=viewMode.value==='card'?'none':'block'; cardWrap.style.display=viewMode.value==='card'?'grid':'none'; meta.textContent=`${totalCount} result(s)`; pageInfo.textContent=`Page ${currentPage}/${totalPages}`; prev.disabled=currentPage<=1; next.disabled=currentPage>=totalPages; syncQuery()}
 async function loadSavedFilters(){const {data:{user}}=await sb.auth.getUser(); if(!user) return; const {data}=await sb.from('saved_filters').select('id,name,filter_json').eq('user_id',user.id).order('created_at',{ascending:false}).limit(30); const arr=data||[]; savedList.innerHTML="<option value=''>Load Saved Filter...</option>"+arr.map(x=>`<option value='${x.id}'>${x.name}</option>`).join(''); window._saved=arr}
 (async()=>{applyQuery(); await fetchPage(); loadSavedFilters();})();
-[fType,fOut,fMinWait,fMaxWait,sortBy].forEach(el=>el.onchange=async()=>{currentPage=1;await fetchPage()}); pageSize.onchange=async()=>{size=Number(pageSize.value)||20; currentPage=1; await fetchPage()}; viewMode.onchange=render; prev.onclick=async()=>{currentPage--;await fetchPage()}; next.onclick=async()=>{currentPage++;await fetchPage()};
+let fetchTimer=null;
+function debouncedFetch(resetPage=false){
+  if (resetPage) currentPage=1;
+  clearTimeout(fetchTimer);
+  fetchTimer=setTimeout(()=>fetchPage(),220);
+}
+[fType,fOut,sortBy].forEach(el=>el.onchange=()=>debouncedFetch(true));
+[fMinWait,fMaxWait].forEach(el=>el.oninput=()=>debouncedFetch(true));
+pageSize.onchange=()=>{size=Number(pageSize.value)||20; debouncedFetch(true)};
+viewMode.onchange=render;
+prev.onclick=async()=>{currentPage--;await fetchPage()};
+next.onclick=async()=>{currentPage++;await fetchPage()};
 copyLink.onclick=async()=>{await navigator.clipboard.writeText(location.href);meta.textContent='Share link copied.'}
 saveFilter.onclick=async()=>{const {data:{user}}=await sb.auth.getUser(); if(!user){meta.textContent='Login required to save filters.';return}
 const payload={user_id:user.id,name:`${fType.value||'All'}-${fOut.value||'All'}-${new Date().toISOString().slice(0,10)}`,filter_json:{type:fType.value||null,out:fOut.value||null,minw:fMinWait.value||null,maxw:fMaxWait.value||null,sort:sortBy.value,size,page:currentPage,view:viewMode.value}};

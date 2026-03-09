@@ -10,4 +10,6 @@ input,select,textarea,button{width:100%;padding:10px;border-radius:8px;border:1p
 button{cursor:pointer;background:#1a2c50}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--line);padding:8px;font-size:14px;text-align:left}
 .small{color:var(--muted);font-size:13px}.row{display:flex;gap:8px;align-items:center}
-@media (max-width:800px){.two{grid-template-columns:1fr}}
+[id^='err_']{color:#fda4af;min-height:16px}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+@media (max-width:800px){.two{grid-template-columns:1fr}.row{flex-wrap:wrap}}
