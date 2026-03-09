@@ -16,10 +16,10 @@
 <div id='cardWrap' class='grid' style='display:none'></div>
 <div class='card row'><button id='prev' style='max-width:120px'>Prev</button><span id='pageInfo' class='small'>Page 1</span><button id='next' style='max-width:120px'>Next</button></div>
 
-<dialog id='detailDlg' style='max-width:680px;width:90%;background:#0f172a;color:#e9eefc;border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:16px'>
+<dialog id='detailDlg' style='max-width:760px;width:92%;background:#0f172a;color:#e9eefc;border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:16px'>
   <h3>Case Details</h3>
-  <pre id='detailText' style='white-space:pre-wrap;line-height:1.6'></pre>
-  <button onclick='detailDlg.close()'>Close</button>
+  <div id='detailGrid' class='grid'></div>
+  <div style='margin-top:12px'><button onclick='detailDlg.close()'>Close</button></div>
 </dialog>
 
 </main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
@@ -27,7 +27,25 @@ let all=[], currentPage=1, size=20; const tb=document.getElementById('tb'); cons
 function applyQuery(){const u=new URL(location.href);fType.value=u.searchParams.get('type')||'';fOut.value=u.searchParams.get('out')||'';currentPage=Number(u.searchParams.get('p')||1);size=Number(u.searchParams.get('s')||20);pageSize.value=String(size);viewMode.value=u.searchParams.get('v')||'table'}
 function syncQuery(){const u=new URL(location.href); if(fType.value)u.searchParams.set('type',fType.value); else u.searchParams.delete('type'); if(fOut.value)u.searchParams.set('out',fOut.value); else u.searchParams.delete('out'); u.searchParams.set('p',String(currentPage)); u.searchParams.set('s',String(size)); u.searchParams.set('v',viewMode.value); history.replaceState({},'',u)}
 function filtered(){const t=fType.value,o=fOut.value;return all.filter(r=>(!t||r.application_type===t)&&(!o||r.outcome_status===o))}
-function openDetail(r){detailText.textContent=JSON.stringify(r,null,2); detailDlg.showModal()}
+function field(label,val){return `<div class='card' style='margin:0'><div class='small'>${label}</div><div>${val??'-'}</div></div>`}
+function openDetail(r){
+  detailGrid.innerHTML = [
+    field('Application Type', r.application_type),
+    field('Outcome Status', r.outcome_status),
+    field('Industry', r.industry),
+    field('Income Band', r.income_band),
+    field('Nationality', r.nationality),
+    field('Marital Status', r.marital_status),
+    field('Family Application', r.family_application),
+    field('Children Count', r.children_count),
+    field('Education', r.education_level),
+    field('Applied Date', fmtDate(r.application_date)),
+    field('Outcome Date', fmtDate(r.outcome_date)),
+    field('Waiting Days', r.waiting_days),
+    field('Notes', r.free_text_notes || '-')
+  ].join('');
+  detailDlg.showModal();
+}
 function renderCards(pageItems){cardWrap.innerHTML=pageItems.map((r,idx)=>`<article class='card'><h3>${r.application_type||'-'} · ${r.outcome_status||'-'}</h3><p class='small'>Industry: ${r.industry||'-'} · Income: ${r.income_band||'-'}</p><p class='small'>Applied: ${fmtDate(r.application_date)} · Outcome: ${fmtDate(r.outcome_date)} · Waiting: ${r.waiting_days??'-'} days</p><button onclick='openDetailByIndex(${idx})'>Details</button></article>`).join(''); window._pageItems=pageItems}
 window.openDetailByIndex=(i)=>openDetail((window._pageItems||[])[i]);
 function render(){const x=filtered(); const totalPages=Math.max(1,Math.ceil(x.length/size)); currentPage=Math.max(1,Math.min(currentPage,totalPages)); const start=(currentPage-1)*size; const pageItems=x.slice(start,start+size);
