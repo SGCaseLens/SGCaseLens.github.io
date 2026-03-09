@@ -5,20 +5,24 @@
   <div><label>Outcome</label><select id='fOut'><option value=''>All</option><option>approved</option><option>rejected</option><option>pending</option><option>appealed</option></select></div>
 </div>
 <div class='card row'>
+  <select id='pageSize' style='max-width:140px'><option value='10'>10 / page</option><option value='20' selected>20 / page</option><option value='50'>50 / page</option></select>
   <button id='saveFilter' style='max-width:200px'>Save Filter</button>
   <button id='copyLink' style='max-width:220px'>Copy Share Link</button>
   <span id='meta' class='small'></span>
 </div>
 <div class='card'><table class='table'><thead><tr><th>Type</th><th>Outcome</th><th>Industry</th><th>Income</th><th>Applied</th><th>Outcome Date</th><th>Waiting</th></tr></thead><tbody id='tb'></tbody></table></div>
+<div class='card row'><button id='prev' style='max-width:120px'>Prev</button><span id='pageInfo' class='small'>Page 1</span><button id='next' style='max-width:120px'>Next</button></div>
 </main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
-let all=[]; const tb=document.getElementById('tb');
-function applyQuery(){const u=new URL(location.href);fType.value=u.searchParams.get('type')||'';fOut.value=u.searchParams.get('out')||''}
-function syncQuery(){const u=new URL(location.href); if(fType.value)u.searchParams.set('type',fType.value); else u.searchParams.delete('type'); if(fOut.value)u.searchParams.set('out',fOut.value); else u.searchParams.delete('out'); history.replaceState({},'',u)}
-function render(){const t=fType.value,o=fOut.value;const x=all.filter(r=>(!t||r.application_type===t)&&(!o||r.outcome_status===o));tb.innerHTML=x.map(r=>`<tr><td>${r.application_type||'-'}</td><td>${r.outcome_status||'-'}</td><td>${r.industry||'-'}</td><td>${r.income_band||'-'}</td><td>${fmtDate(r.application_date)}</td><td>${fmtDate(r.outcome_date)}</td><td>${r.waiting_days??'-'}</td></tr>`).join('');meta.textContent=`${x.length} result(s)`; syncQuery()}
-(async()=>{applyQuery();const {data,error}=await sb.from('public_cases_view').select('application_type,outcome_status,industry,income_band,application_date,outcome_date,waiting_days,created_at').order('created_at',{ascending:false}).limit(500); if(error){alert(error.message);return;} all=data||[]; render();})();
-fType.onchange=fOut.onchange=render;
+let all=[], currentPage=1, size=20; const tb=document.getElementById('tb');
+function applyQuery(){const u=new URL(location.href);fType.value=u.searchParams.get('type')||'';fOut.value=u.searchParams.get('out')||'';currentPage=Number(u.searchParams.get('p')||1);size=Number(u.searchParams.get('s')||20);pageSize.value=String(size)}
+function syncQuery(){const u=new URL(location.href); if(fType.value)u.searchParams.set('type',fType.value); else u.searchParams.delete('type'); if(fOut.value)u.searchParams.set('out',fOut.value); else u.searchParams.delete('out'); u.searchParams.set('p',String(currentPage)); u.searchParams.set('s',String(size)); history.replaceState({},'',u)}
+function filtered(){const t=fType.value,o=fOut.value;return all.filter(r=>(!t||r.application_type===t)&&(!o||r.outcome_status===o))}
+function render(){const x=filtered(); const totalPages=Math.max(1,Math.ceil(x.length/size)); currentPage=Math.max(1,Math.min(currentPage,totalPages)); const start=(currentPage-1)*size; const pageItems=x.slice(start,start+size);
+tb.innerHTML=pageItems.map(r=>`<tr><td>${r.application_type||'-'}</td><td>${r.outcome_status||'-'}</td><td>${r.industry||'-'}</td><td>${r.income_band||'-'}</td><td>${fmtDate(r.application_date)}</td><td>${fmtDate(r.outcome_date)}</td><td>${r.waiting_days??'-'}</td></tr>`).join('');meta.textContent=`${x.length} result(s)`; pageInfo.textContent=`Page ${currentPage}/${totalPages}`; prev.disabled=currentPage<=1; next.disabled=currentPage>=totalPages; syncQuery()}
+(async()=>{applyQuery();const {data,error}=await sb.from('public_cases_view').select('application_type,outcome_status,industry,income_band,application_date,outcome_date,waiting_days,created_at').order('created_at',{ascending:false}).limit(1000); if(error){alert(error.message);return;} all=data||[]; render();})();
+fType.onchange=fOut.onchange=()=>{currentPage=1;render()}; pageSize.onchange=()=>{size=Number(pageSize.value)||20; currentPage=1; render()}; prev.onclick=()=>{currentPage--;render()}; next.onclick=()=>{currentPage++;render()};
 copyLink.onclick=async()=>{await navigator.clipboard.writeText(location.href);meta.textContent='Share link copied.'}
 saveFilter.onclick=async()=>{const {data:{user}}=await sb.auth.getUser(); if(!user){meta.textContent='Login required to save filters.';return}
-const payload={user_id:user.id,name:`${fType.value||'All'}-${fOut.value||'All'}`,filter_json:{type:fType.value||null,out:fOut.value||null}};
+const payload={user_id:user.id,name:`${fType.value||'All'}-${fOut.value||'All'}`,filter_json:{type:fType.value||null,out:fOut.value||null,size,page:currentPage}};
 const {error}=await sb.from('saved_filters').insert(payload); meta.textContent=error?error.message:'Filter saved.';}
 </script></body></html>
