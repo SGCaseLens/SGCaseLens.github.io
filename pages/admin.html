@@ -2,7 +2,7 @@
 <nav class='nav'><b>SG Application Insights</b><div class='menu'><a href='../index.html'>Dashboard</a><a href='cases.html'>Cases</a><a href='submit.html'>Submit</a><a href='insights.html'>Insights</a><a href='trends.html'>Trends</a><a href='auth.html'>Auth</a><a class='active' href='admin.html'>Admin</a></div></nav>
 <div class='card'>
   <h3>Moderation Queue</h3>
-  <p class='small'>Admin-only according to RLS. Batch update + moderation logs enabled.</p>
+  <p class='small'>Admin-only according to RLS. Batch update + moderation logs + report handling.</p>
   <div class='row'>
     <button onclick="batchSet('approved')" style='max-width:160px'>Batch Approve</button>
     <button onclick="batchSet('rejected')" style='max-width:160px'>Batch Reject</button>
@@ -10,17 +10,25 @@
   </div>
   <table class='table'><thead><tr><th><input type='checkbox' id='all'></th><th>ID</th><th>Type</th><th>Outcome</th><th>Moderation</th><th>Updated</th><th>Action</th></tr></thead><tbody id='tb'></tbody></table><p id='msg' class='small'></p>
 </div>
+<div class='card'>
+  <h3>Reports Queue</h3>
+  <table class='table'><thead><tr><th>Report ID</th><th>Submission</th><th>Status</th><th>Reason</th><th>Action</th></tr></thead><tbody id='rb'></tbody></table>
+</div>
 </main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
 let rows=[];
 async function logAction(submission_id,action,reason){const {data:{user}}=await sb.auth.getUser(); if(!user) return; await sb.from('moderation_logs').insert({submission_id,moderator_id:user.id,action,reason})}
+async function loadReports(){const {data,error}=await sb.from('reports').select('id,submission_id,status,reason').order('created_at',{ascending:false}).limit(50); if(error){return}
+rb.innerHTML=(data||[]).map(r=>`<tr><td>${r.id.slice(0,8)}...</td><td>${(r.submission_id||'').slice(0,8)}...</td><td>${r.status}</td><td>${r.reason||'-'}</td><td><button onclick="setReport('${r.id}','reviewing')">Reviewing</button> <button onclick="setReport('${r.id}','resolved')">Resolve</button> <button onclick="setReport('${r.id}','dismissed')">Dismiss</button></td></tr>`).join('')}
+window.setReport=async(id,to)=>{const {error}=await sb.from('reports').update({status:to}).eq('id',id); msg.textContent=error?error.message:`Report ${id.slice(0,8)}... -> ${to}`; loadReports()}
 async function load(){const {data,error}=await sb.from('submissions').select('id,application_type,outcome_status,moderation_status,updated_at').order('updated_at',{ascending:false}).limit(100); if(error){msg.textContent=error.message;return}
 rows=data||[];
-tb.innerHTML=rows.map(x=>`<tr><td><input type='checkbox' class='pick' value='${x.id}'></td><td>${x.id.slice(0,8)}...</td><td>${x.application_type||'-'}</td><td>${x.outcome_status}</td><td>${x.moderation_status}</td><td>${fmtDate(x.updated_at)}</td><td><button onclick="setStatus('${x.id}','approved')">Approve</button> <button onclick="setStatus('${x.id}','rejected')">Reject</button> <button onclick="setStatus('${x.id}','hidden')">Hide</button></td></tr>`).join('')}
+tb.innerHTML=rows.map(x=>`<tr><td><input type='checkbox' class='pick' value='${x.id}'></td><td>${x.id.slice(0,8)}...</td><td>${x.application_type||'-'}</td><td>${x.outcome_status}</td><td>${x.moderation_status}</td><td>${fmtDate(x.updated_at)}</td><td><button onclick="setStatus('${x.id}','approved')">Approve</button> <button onclick="setStatus('${x.id}','rejected')">Reject</button> <button onclick="setStatus('${x.id}','hidden')">Hide</button> <button onclick="flagDuplicate('${x.id}')">Flag Duplicate</button></td></tr>`).join('')}
 window.setStatus=async(id,to)=>{const {error}=await sb.from('submissions').update({moderation_status:to}).eq('id',id); if(error){msg.textContent=error.message;return} await logAction(id,to,'single update'); msg.textContent='Updated '+id.slice(0,8)+'... to '+to; load()}
+window.flagDuplicate=async(id)=>{await logAction(id,'flag_duplicate','manual duplicate mark'); msg.textContent='Logged duplicate flag for '+id.slice(0,8)+'...'}
 window.batchSet=async(to)=>{const ids=[...document.querySelectorAll('.pick:checked')].map(x=>x.value); if(!ids.length){msg.textContent='No rows selected.'; return}
 const {error}=await sb.from('submissions').update({moderation_status:to}).in('id',ids); if(error){msg.textContent=error.message; return}
 for (const id of ids){ await logAction(id,to,'batch update') }
 msg.textContent=`Batch updated ${ids.length} row(s) to ${to}`; load()}
 all.onchange=()=>{document.querySelectorAll('.pick').forEach(x=>x.checked=all.checked)}
-load();
+load(); loadReports();
 </script></body></html>
