@@ -1,14 +1,16 @@
 <!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>SG Application Insights</title><link rel='stylesheet' href='assets/style.css'></head><body><main class='wrap'>
 <nav class='nav'><b>SG Application Insights</b><div class='menu'><a class='active' href='index.html'>Dashboard</a><a href='pages/cases.html'>Cases</a><a href='pages/submit.html'>Submit</a><a href='pages/insights.html'>Insights</a><a href='pages/trends.html'>Trends</a><a href='pages/auth.html'>Auth</a><a href='pages/admin.html'>Admin</a></div></nav>
 <div class='card'><h1>Singapore Application Case Trend Platform</h1><p class='small'>Based on platform samples. This dashboard shows descriptive trends, not deterministic outcomes.</p></div>
-<section class='grid kpi'><div class='card'><h3>Total Cases</h3><p id='kTotal'>-</p></div><div class='card'><h3>New in 30 days</h3><p id='k30'>-</p></div><div class='card'><h3>Approved</h3><p id='kA'>-</p></div><div class='card'><h3>Rejected</h3><p id='kR'>-</p></div><div class='card'><h3>Pending</h3><p id='kP'>-</p></div><div class='card'><h3>Avg Waiting Days</h3><p id='kW'>-</p></div></section>
-<div class='two'><div class='card'><div id='trend' style='height:320px'></div></div><div class='card'><div id='statusPie' style='height:320px'></div></div></div>
-<div class='two'><div class='card'><div id='typeBar' style='height:320px'></div></div><div class='card'><div id='waitBox' style='height:320px'></div></div></div>
-<div class='card'><h3>Recent New Cases</h3><table class='table'><thead><tr><th>Type</th><th>Outcome</th><th>Industry</th><th>Applied</th><th>Updated</th></tr></thead><tbody id='recentTb'></tbody></table></div>
+<section class='grid kpi'><div class='card'><h3>Total Cases</h3><p id='kTotal'>...</p></div><div class='card'><h3>New in 30 days</h3><p id='k30'>...</p></div><div class='card'><h3>Approved</h3><p id='kA'>...</p></div><div class='card'><h3>Rejected</h3><p id='kR'>...</p></div><div class='card'><h3>Pending</h3><p id='kP'>...</p></div><div class='card'><h3>Avg Waiting Days</h3><p id='kW'>...</p></div></section>
+<div class='two'><div class='card'><div id='trend' style='height:320px'>Loading chart...</div></div><div class='card'><div id='statusPie' style='height:320px'>Loading chart...</div></div></div>
+<div class='two'><div class='card'><div id='typeBar' style='height:320px'>Loading chart...</div></div><div class='card'><div id='waitBox' style='height:320px'>Loading chart...</div></div></div>
+<div class='card'><h3>Recent New Cases</h3><table class='table'><thead><tr><th>Type</th><th>Outcome</th><th>Industry</th><th>Applied</th><th>Updated</th></tr></thead><tbody id='recentTb'><tr><td colspan='5'>Loading...</td></tr></tbody></table></div>
 </main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='https://cdn.jsdelivr.net/npm/echarts@5'></script><script src='js/config.js'></script><script src='js/common.js'></script><script>
 function quantile(sorted,q){if(!sorted.length) return null; const pos=(sorted.length-1)*q; const b=Math.floor(pos); const r=pos-b; return sorted[b+1]!==undefined?sorted[b]+r*(sorted[b+1]-sorted[b]):sorted[b]}
-(async()=>{const {data,error}=await sb.from('public_cases_view').select('*').order('created_at',{ascending:false}).limit(1000); if(error){alert(error.message);return}
-const arr=data||[]; const now=Date.now();
+(async()=>{const cacheKey='sg_dashboard_cache_v1'; const cache=localStorage.getItem(cacheKey); if(cache){try{const o=JSON.parse(cache); if(Date.now()-o.ts<300000){render(o.data); return}}catch{}}
+const {data,error}=await sb.from('public_cases_view').select('*').order('created_at',{ascending:false}).limit(1000); if(error){alert(error.message);return}
+localStorage.setItem(cacheKey,JSON.stringify({ts:Date.now(),data:data||[]})); render(data||[]);
+function render(arr){const now=Date.now();
 document.getElementById('kTotal').textContent=arr.length;
 document.getElementById('k30').textContent=arr.filter(x=>now-new Date(x.created_at).getTime()<30*86400000).length;
 const c={approved:0,rejected:0,pending:0,appealed:0}; arr.forEach(x=>c[x.outcome_status]=(c[x.outcome_status]||0)+1);
@@ -22,5 +24,6 @@ const typeBar=echarts.init(document.getElementById('typeBar')); typeBar.setOptio
 const box=echarts.init(document.getElementById('waitBox')); const min=ws[0]??0,max=ws[ws.length-1]??0,q1=quantile(ws,0.25)??0,med=quantile(ws,0.5)??0,q3=quantile(ws,0.75)??0;
 box.setOption({title:{text:'Waiting Days Box Summary',textStyle:{color:'#e9eefc'}},xAxis:{type:'category',data:['All Samples'],axisLabel:{color:'#9fb0ce'}},yAxis:{type:'value',axisLabel:{color:'#9fb0ce'}},series:[{type:'boxplot',data:[[min,q1,med,q3,max]]}],grid:{left:40,right:10,top:50,bottom:40}});
 recentTb.innerHTML=arr.slice(0,10).map(r=>`<tr><td>${r.application_type||'-'}</td><td>${r.outcome_status||'-'}</td><td>${r.industry||'-'}</td><td>${fmtDate(r.application_date)}</td><td>${fmtDate(r.updated_at||r.created_at)}</td></tr>`).join('');
+}
 })();
 </script></body></html>
