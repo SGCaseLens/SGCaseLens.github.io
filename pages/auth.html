@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Auth</title><link rel='stylesheet' href='../assets/style.css'></head><body><main class='wrap'>
+<nav class='nav'><b>SG Application Insights</b><div class='menu'><a href='../index.html'>Dashboard</a><a href='cases.html'>Cases</a><a href='submit.html'>Submit</a><a href='insights.html'>Insights</a><a class='active' href='auth.html'>Auth</a><a href='admin.html'>Admin</a></div></nav>
+<div class='card'><div class='row'><input id='email' type='email' placeholder='Email'><button id='magic'>Send Magic Link</button><button id='logout'>Logout</button></div><p id='msg' class='small'></p></div>
+</main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
+magic.onclick=async()=>{const {error}=await sb.auth.signInWithOtp({email:email.value,options:{emailRedirectTo:'https://sgcaselens.github.io/pages/auth.html'}});msg.textContent=error?error.message:'Magic link sent.'}
+logout.onclick=async()=>{await sb.auth.signOut();msg.textContent='Logged out.'}
+sb.auth.getUser().then(({data})=>{if(data.user) msg.textContent='Logged in as '+data.user.email})
+</script></body></html>

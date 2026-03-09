@@ -1,0 +1,7 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Admin</title><link rel='stylesheet' href='../assets/style.css'></head><body><main class='wrap'>
+<nav class='nav'><b>SG Application Insights</b><div class='menu'><a href='../index.html'>Dashboard</a><a href='cases.html'>Cases</a><a href='submit.html'>Submit</a><a href='insights.html'>Insights</a><a href='auth.html'>Auth</a><a class='active' href='admin.html'>Admin</a></div></nav>
+<div class='card'><h3>Moderation Queue</h3><p class='small'>Admin-only data according to RLS. If you are not admin, this page will show permission errors.</p><table class='table'><thead><tr><th>ID</th><th>Type</th><th>Status</th><th>Moderation</th><th>Updated</th></tr></thead><tbody id='tb'></tbody></table><p id='msg' class='small'></p></div>
+</main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
+(async()=>{const {data,error}=await sb.from('submissions').select('id,application_type,outcome_status,moderation_status,updated_at').order('updated_at',{ascending:false}).limit(100); if(error){msg.textContent=error.message;return}
+tb.innerHTML=(data||[]).map(x=>`<tr><td>${x.id.slice(0,8)}...</td><td>${x.application_type||'-'}</td><td>${x.outcome_status}</td><td>${x.moderation_status}</td><td>${fmtDate(x.updated_at)}</td></tr>`).join('')})();
+</script></body></html>

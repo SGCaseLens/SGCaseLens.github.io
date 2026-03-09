@@ -1,0 +1,4 @@
+-- Run this in Supabase SQL Editor (from SGCaseLens.md canonical version)
+-- Minimal reminder file: full schema is documented in /home/hongten/.openclaw/workspace/SGCaseLens.md
+-- Includes tables: user_profiles, submissions, submission_tags, bookmarks, saved_filters,
+-- insight_requests, aggregate_daily, reports, moderation_logs; views/functions + RLS policies.
