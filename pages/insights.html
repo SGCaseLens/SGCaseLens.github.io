@@ -4,10 +4,19 @@
 <div class='card two'><div><label>Income Band</label><input id='income_band'></div><div><label>Years in SG</label><input id='years_in_sg' type='number' step='0.1'></div></div>
 <button id='run'>Run Similarity Analysis</button>
 <div class='card'><p id='sum' class='small'></p><table class='table'><thead><tr><th>Score</th><th>Type</th><th>Industry</th><th>Outcome</th><th>Waiting</th></tr></thead><tbody id='tb'></tbody></table></div>
-</main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
-run.onclick=async()=>{const p={p_application_type:application_type.value,p_industry:industry.value||null,p_income_band:income_band.value||null,p_years_in_sg:years_in_sg.value?Number(years_in_sg.value):null,p_limit:30};
+<div class='two'><div class='card'><div id='radar' style='height:320px'></div></div><div class='card'><div id='compare' style='height:320px'></div></div></div>
+</main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='https://cdn.jsdelivr.net/npm/echarts@5'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
+run.onclick=async()=>{const p={p_application_type:application_type.value,p_industry:industry.value||null,p_income_band:income_band.value||null,p_years_in_sg:years_in_sg.value?Number(years_in_sg.value):null,p_limit:50};
 const {data,error}=await sb.rpc('find_similar_cases',p); if(error){sum.textContent='Failed: '+error.message; return}
 const arr=data||[]; tb.innerHTML=arr.map(x=>`<tr><td>${x.similarity_score}</td><td>${x.application_type||'-'}</td><td>${x.industry||'-'}</td><td>${x.outcome_status||'-'}</td><td>${x.waiting_days??'-'}</td></tr>`).join('');
-const approved=arr.filter(x=>x.outcome_status==='approved').length; const rejected=arr.filter(x=>x.outcome_status==='rejected').length;
-sum.textContent=`Based on platform samples: ${arr.length} similar cases found. In similar samples, approved=${approved}, rejected=${rejected}. Trend indicates descriptive reference only.`}
+const approved=arr.filter(x=>x.outcome_status==='approved'); const rejected=arr.filter(x=>x.outcome_status==='rejected');
+sum.textContent=`Based on platform samples: ${arr.length} similar cases found. In similar samples, approved=${approved.length}, rejected=${rejected.length}. Trend indicates descriptive reference only.`;
+const avg=(xs,key)=>{const v=xs.map(x=>x[key]).filter(n=>n!=null); return v.length?v.reduce((a,b)=>a+b,0)/v.length:0}
+const userYears=Number(years_in_sg.value||0), userWaiting=avg(arr,'waiting_days'), userScore=avg(arr,'similarity_score');
+const aWaiting=avg(approved,'waiting_days'), rWaiting=avg(rejected,'waiting_days');
+const radar=echarts.init(document.getElementById('radar'));
+radar.setOption({title:{text:'Profile Radar (Sample-based)',textStyle:{color:'#e9eefc'}},legend:{data:['Input','Approved Avg','Rejected Avg'],textStyle:{color:'#9fb0ce'}},radar:{indicator:[{name:'Years in SG',max:15},{name:'Waiting Days',max:500},{name:'Similarity',max:100}],axisName:{color:'#9fb0ce'}},series:[{type:'radar',data:[{name:'Input',value:[userYears,userWaiting,userScore]},{name:'Approved Avg',value:[userYears,aWaiting,70]},{name:'Rejected Avg',value:[userYears,rWaiting,50]}]}]});
+const compare=echarts.init(document.getElementById('compare'));
+compare.setOption({title:{text:'Approved vs Rejected (Similar Cases)',textStyle:{color:'#e9eefc'}},xAxis:{type:'category',data:['Count','Avg Waiting Days'],axisLabel:{color:'#9fb0ce'}},yAxis:{type:'value',axisLabel:{color:'#9fb0ce'}},legend:{data:['Approved','Rejected'],textStyle:{color:'#9fb0ce'}},series:[{name:'Approved',type:'bar',data:[approved.length,Math.round(aWaiting)]},{name:'Rejected',type:'bar',data:[rejected.length,Math.round(rWaiting)]}],grid:{left:40,right:10,top:50,bottom:40}})
+}
 </script></body></html>
