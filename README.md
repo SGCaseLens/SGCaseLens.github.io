@@ -1,10 +1,10 @@
-# SGCaseLens - 新加坡申请案例洞察
-
 <p align="center">
   <img src="./assets/logo-sgcaselens-mark.svg" alt="SGCaseLens Logo" width="140" />
 </p>
 
-SGCaseLens 是一个基于真实用户案例的公开数据网站，面向新加坡 PR / Citizen 申请人，提供：
+<h1 align="center">SGCaseLens - 新加坡申请案例洞察</h1>
+
+[SGCaseLens](https://sgcaselens.github.io/) 是一个基于真实用户案例的公开数据网站，面向新加坡 PR / Citizen 申请人，提供：
 
 - 案例库检索与筛选
 - 相似案例分析与趋势参考
