@@ -1,33 +1,266 @@
-<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>SG Application Insights</title><link rel='stylesheet' href='assets/style.css'></head><body><main class='wrap'>
-<nav class='nav'><b>SG Application Insights</b><div class='menu'><a class='active' href='index.html'>Dashboard</a><a href='pages/cases.html'>Cases</a><a href='pages/submit.html'>Submit</a><a href='pages/insights.html'>Insights</a><a href='pages/trends.html'>Trends</a><a href='pages/auth.html'>Auth</a><a href='pages/admin.html'>Admin</a></div></nav>
-<div class='card'><h1>Singapore Application Case Trend Platform</h1><p class='small'>Based on platform samples. This dashboard shows descriptive trends, not deterministic outcomes.</p></div>
-<section class='grid kpi'><div class='card'><h3>Total Cases</h3><p id='kTotal'>...</p></div><div class='card'><h3>New in 30 days</h3><p id='k30'>...</p></div><div class='card'><h3>Approved</h3><p id='kA'>...</p></div><div class='card'><h3>Rejected</h3><p id='kR'>...</p></div><div class='card'><h3>Pending</h3><p id='kP'>...</p></div><div class='card'><h3>Avg Waiting Days</h3><p id='kW'>...</p></div></section>
-<div class='two'><div class='card chart-slot'><div id='trend' style='height:320px'>Loading chart...</div></div><div class='card chart-slot'><div id='statusPie' style='height:320px'>Loading chart...</div></div></div>
-<div class='two'><div class='card chart-slot'><div id='typeBar' style='height:320px'>Loading chart...</div></div><div class='card chart-slot'><div id='waitBox' style='height:320px'>Loading chart...</div></div></div>
-<div class='card'><h3>Recent New Cases</h3><table class='table'><thead><tr><th>Type</th><th>Outcome</th><th>Industry</th><th>Applied</th><th>Updated</th></tr></thead><tbody id='recentTb'><tr><td colspan='5'>Loading...</td></tr></tbody></table></div>
-</main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='https://cdn.jsdelivr.net/npm/echarts@5'></script><script src='js/config.js'></script><script src='js/common.js'></script><script>
-function quantile(sorted,q){if(!sorted.length) return null; const pos=(sorted.length-1)*q; const b=Math.floor(pos); const r=pos-b; return sorted[b+1]!==undefined?sorted[b]+r*(sorted[b+1]-sorted[b]):sorted[b]}
-function drawAll(arr){const now=Date.now();
-kTotal.textContent=arr.length; k30.textContent=arr.filter(x=>now-new Date(x.created_at).getTime()<30*86400000).length;
-const c={approved:0,rejected:0,pending:0,appealed:0}; arr.forEach(x=>c[x.outcome_status]=(c[x.outcome_status]||0)+1); kA.textContent=c.approved||0; kR.textContent=c.rejected||0; kP.textContent=c.pending||0;
-const ws=arr.map(x=>x.waiting_days).filter(v=>v!=null).sort((a,b)=>a-b); kW.textContent=ws.length?Math.round(ws.reduce((a,b)=>a+b,0)/ws.length):'-';
-const bucket={}; arr.forEach(x=>{const d=new Date(x.created_at); const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; bucket[k]=(bucket[k]||0)+1}); const ks=Object.keys(bucket).sort();
-if(window._charts){window._charts.forEach(c=>c.dispose());}
-const trend=echarts.init(document.getElementById('trend')); trend.setOption({title:{text:'Monthly New Cases',textStyle:{color:'#e9eefc'}},xAxis:{type:'category',data:ks,axisLabel:{color:'#9fb0ce'}},yAxis:{type:'value',axisLabel:{color:'#9fb0ce'}},series:[{data:ks.map(k=>bucket[k]),type:'line',smooth:true}],grid:{left:40,right:10,top:50,bottom:30}});
-const pie=echarts.init(document.getElementById('statusPie')); pie.setOption({title:{text:'Outcome Distribution',textStyle:{color:'#e9eefc'}},series:[{type:'pie',radius:['45%','70%'],data:Object.entries(c).map(([k,v])=>({name:k,value:v}))}],textStyle:{color:'#e9eefc'}});
-const byType={}; arr.forEach(x=>{const t=x.application_type||'Unknown'; byType[t]=(byType[t]||0)+1}); const tk=Object.keys(byType);
-const typeBar=echarts.init(document.getElementById('typeBar')); typeBar.setOption({title:{text:'Application Type Distribution',textStyle:{color:'#e9eefc'}},xAxis:{type:'category',data:tk,axisLabel:{color:'#9fb0ce'}},yAxis:{type:'value',axisLabel:{color:'#9fb0ce'}},series:[{type:'bar',data:tk.map(k=>byType[k])}],grid:{left:40,right:10,top:50,bottom:40}});
-const box=echarts.init(document.getElementById('waitBox')); const min=ws[0]??0,max=ws[ws.length-1]??0,q1=quantile(ws,0.25)??0,med=quantile(ws,0.5)??0,q3=quantile(ws,0.75)??0;
-box.setOption({title:{text:'Waiting Days Box Summary',textStyle:{color:'#e9eefc'}},xAxis:{type:'category',data:['All Samples'],axisLabel:{color:'#9fb0ce'}},yAxis:{type:'value',axisLabel:{color:'#9fb0ce'}},series:[{type:'boxplot',data:[[min,q1,med,q3,max]]}],grid:{left:40,right:10,top:50,bottom:40}});
-window._charts=[trend,pie,typeBar,box];
-recentTb.innerHTML=arr.slice(0,10).map(r=>`<tr><td>${r.application_type||'-'}</td><td>${r.outcome_status||'-'}</td><td>${r.industry||'-'}</td><td>${fmtDate(r.application_date)}</td><td>${fmtDate(r.updated_at||r.created_at)}</td></tr>`).join('');
-}
-(async()=>{const cacheKey='sg_dashboard_cache_v2'; const cache=localStorage.getItem(cacheKey); let arr=[]; if(cache){try{const o=JSON.parse(cache); if(Date.now()-o.ts<300000){arr=o.data||[];}}catch{}}
-if(!arr.length){const {data,error}=await sb.from('public_cases_view').select('*').order('created_at',{ascending:false}).limit(1000); if(error){alert(error.message);return} arr=data||[]; localStorage.setItem(cacheKey,JSON.stringify({ts:Date.now(),data:arr}));}
-const observer=new IntersectionObserver((entries)=>{
-  entries.forEach(e=>{ if(e.isIntersecting){ drawAll(arr); observer.disconnect(); } });
-},{threshold:0.1});
-document.querySelectorAll('.chart-slot').forEach(el=>observer.observe(el));
-window.addEventListener('resize',()=>{ if(window._charts){window._charts.forEach(c=>c.resize());} });
-})();
-</script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="siteName">新加坡申请案例洞察</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo-sgcaselens-mark.svg">
+  <link rel="shortcut icon" href="/assets/logo-sgcaselens-mark.svg">
+  <meta name="description" content="新加坡PR、公民申请案例趋势分析平台。查看申请案例统计、等待时长、结果分布，提交您的案例，获取相似案例洞察。">
+  <meta name="keywords" content="新加坡PR,新加坡公民,PR申请,申请案例,ICA,新加坡移民,案例统计,等待时长">
+  <meta property="og:title" content="新加坡申请案例洞察 - PR/公民案例趋势分析">
+  <meta property="og:description" content="基于用户分享的PR、公民申请案例，提供趋势图表、相似案例分析与数据洞察。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://sgcaselens.github.io/">
+  <link rel="canonical" href="https://sgcaselens.github.io/">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/js/theme.js"></script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"WebApplication","name":"新加坡申请案例洞察","alternateName":"SG Application Insights","description":"新加坡PR、公民申请案例趋势分析平台，提供案例统计、相似分析、趋势图表。","url":"https://sgcaselens.github.io/","inLanguage":["zh-CN","en"],"applicationCategory":"ReferenceApplication"}
+  </script>
+</head>
+<body>
+  <main class="wrap">
+    <nav class="nav">
+      <a class="brand" href="/index.html">
+        <img src="/assets/logo-sgcaselens-mark.svg" alt="SGCaseLens logo">
+        <span class="brand-text" data-i18n="siteName">新加坡申请案例洞察</span>
+      </a>
+      <div class="menu">
+        <a class="active" href="/index.html" data-i18n="navDashboard">首页</a>
+        <a href="/pages/cases.html" data-i18n="navCases">案例库</a>
+        <a href="/pages/submit.html" data-i18n="navSubmit">提交案例</a>
+        <a href="/pages/insights.html" data-i18n="navInsights">我的分析</a>
+        <a href="/pages/trends.html" data-i18n="navTrends">趋势中心</a>
+        <a href="/pages/my-cases.html" data-i18n="myCases">我的案例</a>
+      </div>
+      <span class="theme-switch">
+        <a href="#" class="theme-opt" data-theme="light">Light</a>
+        <span class="sep">|</span>
+        <a href="#" class="theme-opt" data-theme="dark">Dark</a>
+      </span>
+      <span class="lang-switch">
+        <a href="#" class="lang-opt" data-lang="zh" data-i18n="langZh">中文</a>
+        <span class="sep">|</span>
+        <a href="#" class="lang-opt" data-lang="en" data-i18n="langEn">English</a>
+      </span>
+    </nav>
+
+    <div class="card hero-card">
+      <h1 data-i18n="pageTitle">新加坡申请案例趋势分析平台</h1>
+      <p class="small" data-i18n="pageDesc">
+        基于平台样本数据，本仪表盘展示描述性趋势，非确定性结论。
+      </p>
+      <p class="small" data-i18n="homeGuideDesc" style="margin-top:10px">
+        这是一个收集并分析新加坡 PR/公民申请案例的平台，帮助你快速参考相似样本。
+      </p>
+      <ol class="small" style="margin:8px 0 0 20px;padding:0;line-height:1.8">
+        <li>
+          <span data-i18n="homeGuideStep1Prefix">先去「</span><a href="/pages/cases.html" data-i18n="navCases" style="color:var(--brand)">案例库</a><span data-i18n="homeGuideStep1Suffix">」筛选与你背景接近的记录。</span>
+        </li>
+        <li>
+          <span data-i18n="homeGuideStep2Prefix">再到「</span><a href="/pages/insights.html" data-i18n="navInsights" style="color:var(--brand)">我的分析</a><span data-i18n="homeGuideStep2Suffix">」查看相似度、通过/拒绝分布和等待时长。</span>
+        </li>
+        <li>
+          <span data-i18n="homeGuideStep3Prefix">最后在「</span><a href="/pages/submit.html" data-i18n="navSubmit" style="color:var(--brand)">提交案例</a><span data-i18n="homeGuideStep3Suffix">」分享你的申请经历，帮助更多人。</span>
+        </li>
+      </ol>
+    </div>
+
+    <a class="submit-cta" href="/pages/submit.html" aria-label="Go to submit page">
+      <div class="submit-cta-content">
+        <h3 data-i18n="submitCtaTitle">分享你的案例，帮助更多申请者</h3>
+        <p class="small" data-i18n="submitCtaDesc">你的一条真实经历，可能就是别人最需要的参考。点击后 1 分钟内即可完成提交。</p>
+        <span class="submit-cta-btn" data-i18n="submitCtaBtn">立即提交案例</span>
+      </div>
+    </a>
+
+    <section class="grid kpi">
+      <div class="card"><h3 data-i18n="totalCases">总案例数</h3><p id="kTotal">...</p></div>
+      <div class="card"><h3 data-i18n="newIn30">近30天新增</h3><p id="k30">...</p></div>
+      <div class="card"><h3 data-i18n="approved">通过</h3><p id="kA">...</p></div>
+      <div class="card"><h3 data-i18n="rejected">拒绝</h3><p id="kR">...</p></div>
+      <div class="card"><h3 data-i18n="pending">待审</h3><p id="kP">...</p></div>
+      <div class="card"><h3 data-i18n="avgWaiting">平均等待天数</h3><p id="kW">...</p></div>
+    </section>
+
+    <div class="two">
+      <div class="card chart-slot"><div id="trend" style="height:320px" data-i18n="loadingChart">加载图表中...</div></div>
+      <div class="card chart-slot"><div id="statusPie" style="height:320px" data-i18n="loadingChart">加载图表中...</div></div>
+    </div>
+    <div class="two">
+      <div class="card chart-slot"><div id="typeBar" style="height:320px" data-i18n="loadingChart">加载图表中...</div></div>
+      <div class="card chart-slot"><div id="waitBox" style="height:320px" data-i18n="loadingChart">加载图表中...</div></div>
+    </div>
+
+    <div class="card">
+      <h3 data-i18n="recentCases">最近新增案例</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th data-i18n="type">类型</th>
+            <th data-i18n="outcome">结果</th>
+            <th data-i18n="industry">行业</th>
+            <th data-i18n="applied">申请日</th>
+            <th data-i18n="updated">更新日</th>
+          </tr>
+        </thead>
+        <tbody id="recentTb">
+          <tr><td colspan="5" data-i18n="loading">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span data-i18n="copyright">© Copyright 2026. All rights reserved.</span>
+    <span class="footer-sep">·</span>
+    <a href="/pages/terms.html" data-i18n="termsLink">查看条款和条件</a>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/i18n.js"></script>
+  <script>
+    document.querySelectorAll('.theme-opt').forEach((a) => {
+      a.addEventListener('click', (e) => { e.preventDefault(); const t = a.getAttribute('data-theme'); if (theme && theme.getTheme() !== t) { theme.setTheme(t); document.querySelectorAll('.theme-opt').forEach(x => x.classList.toggle('active', x.getAttribute('data-theme') === t)); } });
+    });
+    document.querySelectorAll('.theme-opt').forEach((a) => a.classList.toggle('active', a.getAttribute('data-theme') === theme?.getTheme()));
+    document.querySelectorAll('.lang-opt').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const lang = a.getAttribute('data-lang');
+        if (i18n.getLang() !== lang) {
+          i18n.setLang(lang);
+          location.reload();
+        }
+      });
+    });
+
+    function quantile(sorted, q) {
+      if (!sorted.length) return null;
+      const pos = (sorted.length - 1) * q;
+      const b = Math.floor(pos);
+      const r = pos - b;
+      return sorted[b + 1] !== undefined
+        ? sorted[b] + r * (sorted[b + 1] - sorted[b])
+        : sorted[b];
+    }
+
+    function drawAll(arr) {
+      const now = Date.now();
+      const cc = theme?.getChartColors?.() || { text: '#e9eefc', muted: '#9fb0ce' };
+
+      kTotal.textContent = arr.length;
+      k30.textContent = arr.filter(x => now - new Date(x.created_at).getTime() < 30 * 86400000).length;
+
+      const c = { approved: 0, rejected: 0, pending: 0, appealed: 0 };
+      arr.forEach(x => (c[x.outcome_status] = (c[x.outcome_status] || 0) + 1));
+      kA.textContent = c.approved || 0;
+      kR.textContent = c.rejected || 0;
+      kP.textContent = c.pending || 0;
+
+      const ws = arr.map(x => x.waiting_days).filter(v => v != null).sort((a, b) => a - b);
+      kW.textContent = ws.length ? Math.round(ws.reduce((a, b) => a + b, 0) / ws.length) : '-';
+
+      const bucket = {};
+      arr.forEach(x => {
+        const d = new Date(x.created_at);
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        bucket[k] = (bucket[k] || 0) + 1;
+      });
+      const ks = Object.keys(bucket).sort();
+
+      if (window._charts) window._charts.forEach(ch => ch.dispose());
+
+      const trend = echarts.init(document.getElementById('trend'));
+      trend.setOption({
+        title: { text: t('monthlyNewCases'), textStyle: { color: cc.text } },
+        xAxis: { type: 'category', data: ks, axisLabel: { color: cc.muted } },
+        yAxis: { type: 'value', axisLabel: { color: cc.muted } },
+        series: [{ data: ks.map(k => bucket[k]), type: 'line', smooth: true }],
+        grid: { left: 40, right: 10, top: 50, bottom: 30 }
+      });
+
+      const pie = echarts.init(document.getElementById('statusPie'));
+      pie.setOption({
+        title: { text: t('outcomeDist'), textStyle: { color: cc.text } },
+        series: [{ type: 'pie', radius: ['45%', '70%'], data: Object.entries(c).map(([k, v]) => ({ name: k, value: v })) }],
+        textStyle: { color: cc.text }
+      });
+
+      const byType = {};
+      arr.forEach(x => {
+        const tval = x.application_type || 'Unknown';
+        byType[tval] = (byType[tval] || 0) + 1;
+      });
+      const tk = Object.keys(byType);
+
+      const typeBar = echarts.init(document.getElementById('typeBar'));
+      typeBar.setOption({
+        title: { text: t('typeDist'), textStyle: { color: cc.text } },
+        xAxis: { type: 'category', data: tk, axisLabel: { color: cc.muted } },
+        yAxis: { type: 'value', axisLabel: { color: cc.muted } },
+        series: [{ type: 'bar', data: tk.map(k => byType[k]) }],
+        grid: { left: 40, right: 10, top: 50, bottom: 40 }
+      });
+
+      const box = echarts.init(document.getElementById('waitBox'));
+      const min = ws[0] ?? 0;
+      const max = ws[ws.length - 1] ?? 0;
+      const q1 = quantile(ws, 0.25) ?? 0;
+      const med = quantile(ws, 0.5) ?? 0;
+      const q3 = quantile(ws, 0.75) ?? 0;
+      box.setOption({
+        title: { text: t('waitingBox'), textStyle: { color: cc.text } },
+        xAxis: { type: 'category', data: ['All Samples'], axisLabel: { color: cc.muted } },
+        yAxis: { type: 'value', axisLabel: { color: cc.muted } },
+        series: [{ type: 'boxplot', data: [[min, q1, med, q3, max]] }],
+        grid: { left: 40, right: 10, top: 50, bottom: 40 }
+      });
+
+      window._charts = [trend, pie, typeBar, box];
+
+      const esc = (v) => escapeHtml(String(v ?? '-'));
+      recentTb.innerHTML = arr.slice(0, 10).map(r =>
+        `<tr><td>${esc(tOpt(r.application_type) ?? r.application_type)}</td><td>${esc(tOpt(r.outcome_status) ?? r.outcome_status)}</td><td>${esc(tOpt(r.industry) ?? r.industry)}</td><td>${escapeHtml(fmtDate(r.application_date))}</td><td>${escapeHtml(fmtDate(r.updated_at || r.created_at))}</td></tr>`
+      ).join('');
+    }
+
+    (async () => {
+      const cacheKey = 'sg_dashboard_cache_v2';
+      const cache = localStorage.getItem(cacheKey);
+      let arr = [];
+      if (cache) {
+        try {
+          const o = JSON.parse(cache);
+          if (Date.now() - o.ts < 300000) arr = o.data || [];
+        } catch {}
+      }
+      if (!arr.length) {
+        const { data, error } = await sb.from('public_cases_view').select('*').order('created_at', { ascending: false }).limit(1000);
+        if (error) { alert(error.message); return; }
+        arr = data || [];
+        localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: arr }));
+      }
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            drawAll(arr);
+            observer.disconnect();
+          }
+        });
+      }, { threshold: 0.1 });
+      document.querySelectorAll('.chart-slot').forEach(el => observer.observe(el));
+
+      window.addEventListener('resize', () => {
+        if (window._charts) window._charts.forEach(c => c.resize());
+      });
+      document.addEventListener('themechange', () => { if (arr.length) drawAll(arr); });
+    })();
+  </script>
+</body>
+</html>

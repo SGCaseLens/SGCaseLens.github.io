@@ -1,12 +1,125 @@
-<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Trends</title><link rel='stylesheet' href='../assets/style.css'></head><body><main class='wrap'>
-<nav class='nav'><b>SG Application Insights</b><div class='menu'><a href='../index.html'>Dashboard</a><a href='cases.html'>Cases</a><a href='submit.html'>Submit</a><a href='insights.html'>Insights</a><a class='active' href='trends.html'>Trends</a><a href='auth.html'>Auth</a><a href='admin.html'>Admin</a></div></nav>
-<div class='card'><h3>Trend Center</h3><p class='small'>Based on platform samples, these charts show descriptive historical trends.</p></div>
-<div class='two'><div class='card'><div id='industry' style='height:320px'></div></div><div class='card'><div id='income' style='height:320px'></div></div></div>
-</main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='https://cdn.jsdelivr.net/npm/echarts@5'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
-(async()=>{const {data,error}=await sb.from('public_cases_view').select('industry,income_band'); if(error){alert(error.message);return}
-const arr=data||[]; const count=(k)=>{const m={};arr.forEach(x=>{const v=(x[k]||'Unknown').trim();m[v]=(m[v]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,10)};
-const i=count('industry'), n=count('income_band');
-const c1=echarts.init(document.getElementById('industry')); c1.setOption({title:{text:'Top Industries',textStyle:{color:'#e9eefc'}},xAxis:{type:'category',data:i.map(x=>x[0]),axisLabel:{color:'#9fb0ce',rotate:25}},yAxis:{type:'value',axisLabel:{color:'#9fb0ce'}},series:[{type:'bar',data:i.map(x=>x[1])}],grid:{left:40,right:10,top:50,bottom:70}});
-const c2=echarts.init(document.getElementById('income')); c2.setOption({title:{text:'Income Band Distribution',textStyle:{color:'#e9eefc'}},series:[{type:'pie',radius:['40%','70%'],data:n.map(([name,value])=>({name,value}))}],textStyle:{color:'#e9eefc'}});
-})();
-</script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="navTrends">趋势中心</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo-sgcaselens-mark.svg">
+  <link rel="shortcut icon" href="/assets/logo-sgcaselens-mark.svg">
+  <meta name="description" content="新加坡PR、公民申请趋势图表：行业分布、收入区间、月度新增、结果占比等数据可视化。">
+  <meta name="keywords" content="PR申请趋势,公民申请统计,行业分布,收入区间,申请数据">
+  <meta property="og:title" content="趋势中心 - 新加坡申请案例洞察">
+  <meta property="og:url" content="https://sgcaselens.github.io/pages/trends.html">
+  <link rel="canonical" href="https://sgcaselens.github.io/pages/trends.html">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/js/theme.js"></script>
+</head>
+<body>
+  <main class="wrap">
+    <nav class="nav">
+      <a class="brand" href="/index.html">
+        <img src="/assets/logo-sgcaselens-mark.svg" alt="SGCaseLens logo">
+        <span class="brand-text" data-i18n="siteName">新加坡申请案例洞察</span>
+      </a>
+      <div class="menu">
+        <a href="/index.html" data-i18n="navDashboard">首页</a>
+        <a href="/pages/cases.html" data-i18n="navCases">案例库</a>
+        <a href="/pages/submit.html" data-i18n="navSubmit">提交案例</a>
+        <a href="/pages/insights.html" data-i18n="navInsights">我的分析</a>
+        <a class="active" href="/pages/trends.html" data-i18n="navTrends">趋势中心</a>
+        <a href="/pages/my-cases.html" data-i18n="myCases">我的案例</a>
+      </div>
+      <span class="theme-switch">
+        <a href="#" class="theme-opt" data-theme="light">Light</a>
+        <span class="sep">|</span>
+        <a href="#" class="theme-opt" data-theme="dark">Dark</a>
+      </span>
+      <span class="lang-switch">
+        <a href="#" class="lang-opt" data-lang="zh" data-i18n="langZh">中文</a>
+        <span class="sep">|</span>
+        <a href="#" class="lang-opt" data-lang="en" data-i18n="langEn">English</a>
+      </span>
+    </nav>
+
+    <div class="card">
+      <h3 data-i18n="trendCenter">趋势中心</h3>
+      <p class="small">
+        <span data-i18n="trendDesc">基于平台样本，以下图表展示历史描述性趋势。</span>
+        · <a href="/pages/terms.html" data-i18n="termsLink" style="color:var(--brand)">查看条款和条件</a>
+      </p>
+    </div>
+
+    <div class="two">
+      <div class="card"><div id="industry" style="height:320px"></div></div>
+      <div class="card"><div id="income" style="height:320px"></div></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span data-i18n="copyright">© Copyright 2026. All rights reserved.</span>
+    <span class="footer-sep">·</span>
+    <a href="/pages/terms.html" data-i18n="termsLink">查看条款和条件</a>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/i18n.js"></script>
+  <script>
+    document.querySelectorAll('.theme-opt').forEach((a) => {
+      a.addEventListener('click', (e) => { e.preventDefault(); const t = a.getAttribute('data-theme'); if (theme && theme.getTheme() !== t) { theme.setTheme(t); document.querySelectorAll('.theme-opt').forEach(x => x.classList.toggle('active', x.getAttribute('data-theme') === t)); } });
+    });
+    document.querySelectorAll('.theme-opt').forEach((a) => a.classList.toggle('active', a.getAttribute('data-theme') === (theme?.getTheme() || 'dark')));
+    document.querySelectorAll('.lang-opt').forEach((a) => {
+      a.addEventListener('click', (e) => { e.preventDefault(); if (i18n.getLang() !== a.getAttribute('data-lang')) { i18n.setLang(a.getAttribute('data-lang')); location.reload(); } });
+    });
+
+    (async () => {
+      const { data, error } = await sb.from('public_cases_view').select('industry,income_band');
+      if (error) { alert(error.message); return; }
+
+      const arr = data || [];
+      const count = (k) => {
+        const m = {};
+        arr.forEach(x => {
+          const v = (x[k] || 'Unknown').trim();
+          m[v] = (m[v] || 0) + 1;
+        });
+        return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      };
+
+      const i = count('industry');
+      const n = count('income_band');
+      const cc = theme?.getChartColors?.() || { text: '#e9eefc', muted: '#9fb0ce' };
+
+      const c1 = echarts.init(document.getElementById('industry'));
+      c1.setOption({
+        title: { text: t('topIndustries'), textStyle: { color: cc.text } },
+        xAxis: { type: 'category', data: i.map(x => tOpt(x[0]) ?? x[0]), axisLabel: { color: cc.muted, rotate: 25 } },
+        yAxis: { type: 'value', axisLabel: { color: cc.muted } },
+        series: [{ type: 'bar', data: i.map(x => x[1]) }],
+        grid: { left: 40, right: 10, top: 50, bottom: 70 }
+      });
+
+      const c2 = echarts.init(document.getElementById('income'));
+      c2.setOption({
+        title: { text: t('incomeDist'), textStyle: { color: cc.text } },
+        series: [{ type: 'pie', radius: ['40%', '70%'], data: n.map(([name, value]) => ({ name: tOpt(name) ?? name, value })) }],
+        textStyle: { color: cc.text }
+      });
+
+      function redrawTrendsCharts() {
+        const cc = theme?.getChartColors?.() || { text: '#e9eefc', muted: '#9fb0ce' };
+        c1.setOption({
+          title: { textStyle: { color: cc.text } },
+          xAxis: { axisLabel: { color: cc.muted } },
+          yAxis: { axisLabel: { color: cc.muted } }
+        });
+        c2.setOption({ title: { textStyle: { color: cc.text } }, textStyle: { color: cc.text } });
+      }
+      document.addEventListener('themechange', redrawTrendsCharts);
+    })();
+  </script>
+</body>
+</html>

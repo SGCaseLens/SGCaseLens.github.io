@@ -3,15 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title data-i18n="navSubmit">提交案例</title>
+  <title data-i18n="editCase">编辑案例</title>
   <link rel="icon" type="image/svg+xml" href="/assets/logo-sgcaselens-mark.svg">
   <link rel="shortcut icon" href="/assets/logo-sgcaselens-mark.svg">
-  <meta name="description" content="分享您的新加坡PR或公民申请案例，帮助他人参考。支持匿名提交，数据用于趋势分析。">
-  <meta name="keywords" content="提交PR案例,分享申请经历,新加坡PR申请,公民申请分享">
-  <meta property="og:title" content="提交案例 - 新加坡申请案例洞察">
-  <meta property="og:description" content="分享您的新加坡PR/公民申请案例，支持匿名提交。">
-  <meta property="og:url" content="https://sgcaselens.github.io/pages/submit.html">
-  <link rel="canonical" href="https://sgcaselens.github.io/pages/submit.html">
   <link rel="stylesheet" href="/assets/style.css">
   <script src="/js/theme.js"></script>
 </head>
@@ -25,7 +19,7 @@
       <div class="menu">
         <a href="/index.html" data-i18n="navDashboard">首页</a>
         <a href="/pages/cases.html" data-i18n="navCases">案例库</a>
-        <a class="active" href="/pages/submit.html" data-i18n="navSubmit">提交案例</a>
+        <a href="/pages/submit.html" data-i18n="navSubmit">提交案例</a>
         <a href="/pages/insights.html" data-i18n="navInsights">我的分析</a>
         <a href="/pages/trends.html" data-i18n="navTrends">趋势中心</a>
         <a href="/pages/my-cases.html" data-i18n="myCases">我的案例</a>
@@ -42,30 +36,43 @@
       </span>
     </nav>
 
-    <div id="submit-app">
-      <form @submit.prevent="onSubmit" class="card grid">
+    <div id="edit-app">
+      <p v-if="noId" class="small">{{ t('editNotFound') }}</p>
+      <div v-else-if="needVerify" class="card" style="padding:16px">
+        <label>{{ t('verifyToEdit') }}</label>
+        <p class="small" style="margin:4px 0 12px">{{ t('myCasesDesc') }}</p>
+        <div class="two" style="margin-bottom:12px">
+          <div>
+            <label>{{ t('nickname') }}</label>
+            <input v-model="nickname" maxlength="60">
+          </div>
+          <div>
+            <label>{{ t('birthForVerify') }}</label>
+            <div class="row" style="gap:8px;margin:0">
+              <select v-model="birth_month" style="flex:1">
+                <option value="">{{ t('birthMonth') }}</option>
+                <option v-for="m in 12" :key="m" :value="String(m)">{{ m }}</option>
+              </select>
+              <select v-model="birth_day" style="flex:1">
+                <option value="">{{ t('birthDay') }}</option>
+                <option v-for="d in 31" :key="d" :value="String(d)">{{ d }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button @click="doVerify" style="max-width:140px">{{ t('findMyCases') }}</button>
+        <p class="small err" v-if="verifyErr">{{ verifyErr }}</p>
+      </div>
+      <p v-else-if="loading" class="small">{{ t('loading') }}</p>
+      <p v-else-if="notFound" class="small">{{ t('editNotFound') }}</p>
+      <p v-else-if="loadError" class="small err">{{ loadError }}</p>
+      <form v-else @submit.prevent="onSubmit" class="card grid">
         <div class="two">
           <div>
-            <label>{{ t('nickname') }} <span class="small">{{ t('nicknameVerifyHint') }}</span></label>
+            <label>{{ t('nickname') }}</label>
             <input v-model="form.nickname" maxlength="60">
             <div class="small err" v-if="errors.nickname">{{ errors.nickname }}</div>
           </div>
-          <div>
-            <label>{{ t('birthLabel') }} <span class="small">{{ t('nicknameVerifyHint') }}</span></label>
-            <div class="row" style="gap:8px;margin:0">
-              <select v-model="form.birth_month" style="flex:1" required>
-                <option value="">{{ t('birthMonth') }}</option>
-                <option v-for="m in 12" :key="m" :value="String(m)">{{ m }} {{ t('birthMonth') }}</option>
-              </select>
-              <select v-model="form.birth_day" style="flex:1" required>
-                <option value="">{{ t('birthDay') }}</option>
-                <option v-for="d in 31" :key="d" :value="String(d)">{{ d }} {{ t('birthDay') }}</option>
-              </select>
-            </div>
-            <div class="small err" v-if="errors.birth">{{ errors.birth }}</div>
-          </div>
-        </div>
-        <div class="two">
           <div>
             <label>{{ t('applicationTypeRequired') }}</label>
             <select v-model="form.application_type" required>
@@ -73,7 +80,6 @@
               <option value="Citizen">{{ t('optCitizen') }}</option>
               <option value="LTVP">{{ t('optLTVP') }}</option>
             </select>
-            <div class="small err" v-if="errors.application_type">{{ errors.application_type }}</div>
           </div>
         </div>
         <div class="two">
@@ -288,25 +294,8 @@
           <textarea v-model="form.free_text_notes" rows="2" maxlength="1200" :placeholder="t('freeNotesPlaceholder')"></textarea>
           <div class="small err" v-if="errors.free_text_notes">{{ errors.free_text_notes }}</div>
         </div>
-        <div class="terms-row">
-          <label for="agreeTerms" class="terms-label">
-            <input type="checkbox" id="agreeTerms" v-model="form.agree_terms" class="terms-checkbox">
-            {{ t('agreeTermsPrefix') }}<a href="/pages/terms.html" target="_blank" rel="noopener" class="terms-link" @click.stop>{{ t('termsShort') }}</a>{{ t('agreeTermsSuffix') }}
-          </label>
-        </div>
-        <div class="small err" v-if="errors.agree_terms">{{ errors.agree_terms }}</div>
-        <!-- Honeypot: 真人留空，机器人会填 -->
-        <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0">
-          <label for="hp_url">URL</label>
-          <input type="text" id="hp_url" name="url" tabindex="-1" autocomplete="off" v-model="form.hp_url">
-        </div>
-        <div class="small err" v-if="errors.rate_limit">{{ errors.rate_limit }}</div>
-        <button type="submit" :disabled="isSubmitting">{{ t('submitCase') }}</button>
+        <button type="submit" :disabled="isSubmitting">{{ t('saveChanges') }}</button>
         <p class="small" v-if="msg" style="color:var(--muted)">{{ msg }}</p>
-        <div v-if="submitSuccess" class="small" style="margin-top:8px;padding:12px;background:var(--card-alt);border-radius:8px">
-          <p style="margin:0">{{ t('submitSuccessVerify') }}</p>
-          <p style="margin:8px 0 0"><a href="/pages/my-cases.html" style="color:var(--brand)">{{ t('myCases') }}</a></p>
-        </div>
       </form>
     </div>
   </main>
@@ -332,78 +321,106 @@
       a.addEventListener('click', (e) => { e.preventDefault(); if (i18n.getLang() !== a.getAttribute('data-lang')) { i18n.setLang(a.getAttribute('data-lang')); location.reload(); } });
     });
 
-    const { createApp } = Vue;
+    const idParam = new URLSearchParams(location.search).get('id') || '';
 
+    const { createApp } = Vue;
     createApp({
       data() {
         return {
+          subId: idParam,
+          verifyHash: sessionStorage.getItem('sg_verify_' + idParam) || '',
+          nickname: '',
+          birth_month: '',
+          birth_day: '',
+          needVerify: !!idParam && !sessionStorage.getItem('sg_verify_' + idParam),
+          noId: !idParam,
+          verifyErr: '',
+          loadError: '',
           form: {
-            nickname: '',
-            application_type: 'PR',
-            permit_type: '',
-            nationality: '',
-            gender: '',
-            age_group: '',
-            marital_status: '',
-            family_application: 'false',
-            children_count: '0',
-            child_school_type: '',
-            education_level: '',
-            industry: '',
-            income_band: '',
-            years_in_sg: '',
-            application_date: '',
-            outcome_date: '',
-            outcome_status: 'pending',
-            appealed: 'false',
-            asked_for_more_docs: 'false',
-            appeal_status: '',
-            free_text_notes: '',
-            birth_month: '',
-            birth_day: '',
-            agree_terms: false,
-            hp_url: ''
+            nickname: '', application_type: 'PR', permit_type: '', nationality: '', gender: '', age_group: '',
+            marital_status: '', family_application: 'false', children_count: '0', child_school_type: '',
+            education_level: '', industry: '', income_band: '', years_in_sg: '', application_date: '',
+            outcome_date: '', outcome_status: 'pending', appealed: 'false', asked_for_more_docs: 'false',
+            appeal_status: '', free_text_notes: ''
           },
           errors: {},
           msg: '',
-          submitSuccess: false,
-          isSubmitting: false
+          isSubmitting: false,
+          loading: !idParam ? false : !!sessionStorage.getItem('sg_verify_' + idParam),
+          notFound: false
         };
       },
-      watch: {
-        form: {
-          handler() {
-            if (Object.keys(this.errors).length) this.runValidate();
-          },
-          deep: true
-        }
+      mounted() {
+        if (this.noId) return;
+        if (this.verifyHash) this.loadSubmission();
       },
       methods: {
-        t(key) {
-          return typeof window.t === 'function' ? window.t(key) : key;
-        },
-        toBool(v) {
-          return String(v) === 'true';
-        },
+        t(key) { return typeof window.t === 'function' ? window.t(key) : key; },
         async sha256hex(s) {
           const buf = new TextEncoder().encode(s);
           const h = await crypto.subtle.digest('SHA-256', buf);
           return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2,'0')).join('');
+        },
+        async doVerify() {
+          this.verifyErr = '';
+          try {
+            const nk = (this.nickname || '').trim().toLowerCase().replace(/\s/g,'');
+            const bm = String(this.birth_month || '').padStart(2,'0');
+            const bd = String(this.birth_day || '').padStart(2,'0');
+            if (!nk || !bm || !bd) { this.verifyErr = this.t('birthRequired'); return; }
+            this.verifyHash = await this.sha256hex(nk + bm + bd);
+            sessionStorage.setItem('sg_verify_' + this.subId, this.verifyHash);
+            this.needVerify = false;
+            this.loading = true;
+            this.loadSubmission();
+          } catch (e) {
+            this.verifyErr = 'Failed: ' + (e?.message || 'Unexpected error');
+          }
+        },
+        async loadSubmission() {
+          this.loadError = '';
+          try {
+            const { data, error } = await sb.rpc('get_submission_for_edit_by_verify', { p_id: this.subId, p_verify_key_hash: this.verifyHash });
+            this.loading = false;
+            if (error) { this.loadError = 'Failed: ' + error.message; return; }
+            if (data == null) { this.notFound = true; sessionStorage.removeItem('sg_verify_' + this.subId); return; }
+            const r = Array.isArray(data) ? data[0] : data;
+            if (!r || !r.application_type) { this.notFound = true; return; }
+            this.form = {
+              nickname: r.nickname || '',
+              application_type: r.application_type || 'PR',
+              permit_type: r.permit_type || '',
+              nationality: r.nationality || '',
+              gender: r.gender || '',
+              age_group: r.age_group || '',
+              marital_status: r.marital_status || '',
+              family_application: String(!!r.family_application),
+              children_count: String(r.children_count ?? 0),
+              child_school_type: r.child_school_type || '',
+              education_level: r.education_level || '',
+              industry: r.industry || '',
+              income_band: r.income_band || '',
+              years_in_sg: r.years_in_sg != null ? String(r.years_in_sg) : '',
+              application_date: r.application_date || '',
+              outcome_date: r.outcome_date || '',
+              outcome_status: r.outcome_status || 'pending',
+              appealed: String(!!r.appealed),
+              asked_for_more_docs: String(!!r.asked_for_more_docs),
+              appeal_status: r.appeal_status || '',
+              free_text_notes: r.free_text_notes || ''
+            };
+          } catch (e) {
+            this.loading = false;
+            this.loadError = 'Failed: ' + (e?.message || 'Unexpected error');
+          }
         },
         runValidate() {
           const o = this.buildPayload();
           this.errors = {};
           if (!o.nickname || !o.nickname.trim()) this.errors.nickname = this.t('nicknameRequired');
           else if (o.nickname.length > 60) this.errors.nickname = this.t('max60Chars');
-          if (!o.birth_month || !o.birth_day) this.errors.birth = this.t('birthRequired');
-          if (!this.toBool(this.form.agree_terms)) this.errors.agree_terms = this.t('agreeTermsRequired');
-          if (o.children_count !== null && Number(o.children_count) < 0) this.errors.children_count = this.t('mustBeNonNeg');
-          if (o.years_in_sg !== null && Number(o.years_in_sg) < 0) this.errors.years_in_sg = this.t('mustBeNonNeg');
-          if (o.application_date && o.outcome_date && new Date(o.outcome_date) < new Date(o.application_date)) {
-            this.errors.outcome_date = this.t('outcomeBeforeApp');
-          }
+          if (o.application_date && o.outcome_date && new Date(o.outcome_date) < new Date(o.application_date)) this.errors.outcome_date = this.t('outcomeBeforeApp');
           if ((o.free_text_notes || '').length > 1200) this.errors.free_text_notes = this.t('max1200Chars');
-          if ((this.form.hp_url || '').trim()) this.errors.rate_limit = this.t('invalidSubmit');
           if (window.sgSecurity) {
             const secErr = window.sgSecurity.validateUserInput(o.nickname, o.free_text_notes);
             if (secErr.nickname) this.errors.nickname = this.t('invalidChars');
@@ -422,22 +439,10 @@
         async onSubmit() {
           if (this.isSubmitting) return;
           this.msg = '';
-          this.submitSuccess = false;
           const o = this.buildPayload();
-          if (!this.runValidate()) {
-            this.msg = this.t('fixErrors');
-            return;
-          }
-          if (window.sgSecurity && !window.sgSecurity.canSubmit()) {
-            const sec = Math.ceil(window.sgSecurity.getRateLimitRemainingMs() / 1000);
-            this.msg = (this.t('rateLimitMsg') || 'Please wait {s} seconds').replace('{s}', sec);
-            return;
-          }
+          if (!this.runValidate()) { this.msg = this.t('fixErrors'); return; }
           this.isSubmitting = true;
           try {
-            const verifyKey = (o.nickname || '').toLowerCase().replace(/\s/g,'') + String(o.birth_month ?? '').padStart(2,'0') + String(o.birth_day ?? '').padStart(2,'0');
-            const verifyKeyHash = await this.sha256hex(verifyKey);
-
             const payload = {
               nickname: o.nickname,
               application_type: o.application_type,
@@ -446,60 +451,27 @@
               gender: o.gender,
               age_group: o.age_group,
               marital_status: o.marital_status,
-              family_application: this.toBool(o.family_application),
+              family_application: String(o.family_application) === 'true',
               children_count: Number(o.children_count || 0),
               child_school_type: o.child_school_type,
               education_level: o.education_level,
               industry: o.industry,
               income_band: o.income_band,
               years_in_sg: o.years_in_sg ? Number(o.years_in_sg) : null,
-              application_date: o.application_date || null,
-              outcome_date: o.outcome_date || null,
+              application_date: o.application_date,
+              outcome_date: o.outcome_date,
               outcome_status: o.outcome_status,
-              appealed: this.toBool(o.appealed),
-              asked_for_more_docs: this.toBool(o.asked_for_more_docs),
+              appealed: String(o.appealed) === 'true',
+              asked_for_more_docs: String(o.asked_for_more_docs) === 'true',
               appeal_status: o.appeal_status,
-              free_text_notes: o.free_text_notes,
-              moderation_status: 'approved',
-              source_type: 'manual',
-              user_id: null,
-              verify_key_hash: verifyKeyHash
+              free_text_notes: o.free_text_notes
             };
-
-            const { error } = await sb.from('submissions').insert(payload);
-            this.msg = error ? 'Failed: ' + error.message : '';
-            this.submitSuccess = !error;
-            if (!error) {
-              if (window.sgSecurity) window.sgSecurity.recordSubmit();
-              this.form = {
-                nickname: '',
-                application_type: 'PR',
-                permit_type: '',
-                nationality: '',
-                gender: '',
-                age_group: '',
-                marital_status: '',
-                family_application: 'false',
-                children_count: '0',
-                child_school_type: '',
-                education_level: '',
-                industry: '',
-                income_band: '',
-                years_in_sg: '',
-                application_date: '',
-                outcome_date: '',
-                outcome_status: 'pending',
-                appealed: 'false',
-                asked_for_more_docs: 'false',
-                appeal_status: '',
-                free_text_notes: '',
-                birth_month: '',
-                birth_day: '',
-                agree_terms: false,
-                hp_url: ''
-              };
-              this.errors = {};
-            }
+            const { data, error } = await sb.rpc('update_submission_by_verify', {
+              p_id: this.subId,
+              p_verify_key_hash: this.verifyHash,
+              p_payload: payload
+            });
+            this.msg = error ? 'Failed: ' + error.message : (data ? this.t('editSuccess') : this.t('editNotFound'));
           } catch (e) {
             this.msg = 'Failed: ' + (e?.message || 'Unexpected error');
           } finally {
@@ -507,7 +479,7 @@
           }
         }
       }
-    }).mount('#submit-app');
+    }).mount('#edit-app');
   </script>
 </body>
 </html>

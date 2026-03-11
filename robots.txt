@@ -1,0 +1,6 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Sitemap location (update base URL if using custom domain)
+Sitemap: https://sgcaselens.github.io/sitemap.xml

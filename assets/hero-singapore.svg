@@ -1,0 +1,59 @@
+<svg width="1600" height="560" viewBox="0 0 1600 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1600" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#DDEAFE"/>
+      <stop offset="1" stop-color="#F6D9DF"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="390" x2="1600" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D7E9FF"/>
+      <stop offset="1" stop-color="#E8F2FF"/>
+    </linearGradient>
+    <linearGradient id="rightGlow" x1="800" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.10"/>
+    </linearGradient>
+    <radialGradient id="rightSpot" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1290 170) rotate(90) scale(260 420)">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1600" height="560" fill="url(#sky)"/>
+  <rect y="392" width="1600" height="168" fill="url(#water)"/>
+  <rect x="800" y="0" width="800" height="560" fill="url(#rightGlow)"/>
+  <ellipse cx="1290" cy="170" rx="420" ry="260" fill="url(#rightSpot)"/>
+
+  <!-- Marina Bay Sands -->
+  <rect x="930" y="174" width="62" height="220" rx="12" fill="#6D85AB"/>
+  <rect x="1008" y="154" width="62" height="240" rx="12" fill="#687FA5"/>
+  <rect x="1086" y="184" width="62" height="210" rx="12" fill="#7188AE"/>
+  <path d="M896 148C953 110 1126 110 1182 148C1178 162 1172 174 1164 184H914C906 174 900 162 896 148Z" fill="#5C79A3"/>
+
+  <!-- Singapore Flyer -->
+  <circle cx="1265" cy="224" r="88" stroke="#6F8BB5" stroke-width="16" fill="none"/>
+  <circle cx="1265" cy="224" r="10" fill="#6F8BB5"/>
+  <line x1="1265" y1="136" x2="1265" y2="312" stroke="#6F8BB5" stroke-width="4"/>
+  <line x1="1177" y1="224" x2="1353" y2="224" stroke="#6F8BB5" stroke-width="4"/>
+  <line x1="1203" y1="162" x2="1327" y2="286" stroke="#6F8BB5" stroke-width="4"/>
+  <line x1="1327" y1="162" x2="1203" y2="286" stroke="#6F8BB5" stroke-width="4"/>
+  <path d="M1242 312H1288L1298 392H1232L1242 312Z" fill="#607FA9"/>
+
+  <!-- Merlion-inspired silhouette -->
+  <path d="M410 312C432 280 480 266 522 274C540 246 572 238 602 248C598 262 590 272 578 280C598 286 614 300 622 320C598 328 560 328 532 320C500 348 454 356 412 348C404 336 402 324 410 312Z" fill="#6F87AE"/>
+  <path d="M610 300C640 292 674 298 700 316C682 324 660 330 636 332C628 322 620 312 610 300Z" fill="#6F87AE"/>
+
+  <!-- Skyline blocks -->
+  <rect x="92" y="258" width="44" height="134" rx="6" fill="#8EA2C3"/>
+  <rect x="144" y="236" width="52" height="156" rx="6" fill="#879CC0"/>
+  <rect x="208" y="274" width="40" height="118" rx="6" fill="#8EA2C3"/>
+  <rect x="256" y="222" width="58" height="170" rx="6" fill="#879CC0"/>
+  <rect x="322" y="244" width="46" height="148" rx="6" fill="#8EA2C3"/>
+  <rect x="664" y="266" width="38" height="126" rx="6" fill="#8EA2C3"/>
+  <rect x="710" y="228" width="56" height="164" rx="6" fill="#879CC0"/>
+  <rect x="774" y="250" width="42" height="142" rx="6" fill="#8EA2C3"/>
+  <rect x="824" y="210" width="64" height="182" rx="6" fill="#879CC0"/>
+
+  <!-- Gentle wave lines -->
+  <path d="M0 430C100 418 180 442 276 430C372 418 446 442 542 430C638 418 716 442 812 430C908 418 986 442 1082 430C1178 418 1256 442 1352 430C1448 418 1518 442 1600 430" stroke="#A8BBD7" stroke-width="4" opacity="0.7"/>
+  <path d="M0 458C98 446 184 470 278 458C372 446 456 470 550 458C644 446 730 470 824 458C918 446 1004 470 1098 458C1192 446 1278 470 1372 458C1466 446 1538 470 1600 458" stroke="#B7C8DF" stroke-width="3" opacity="0.75"/>
+</svg>

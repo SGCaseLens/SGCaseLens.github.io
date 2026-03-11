@@ -1,51 +1,301 @@
-<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Cases</title><link rel='stylesheet' href='../assets/style.css'></head><body><main class='wrap'>
-<nav class='nav'><b>SG Application Insights</b><div class='menu'><a href='../index.html'>Dashboard</a><a class='active' href='cases.html'>Cases</a><a href='submit.html'>Submit</a><a href='insights.html'>Insights</a><a href='trends.html'>Trends</a><a href='auth.html'>Auth</a><a href='admin.html'>Admin</a></div></nav>
-<div class='card two'>
-  <div><label>Application Type</label><select id='fType'><option value=''>All</option><option>PR</option><option>Citizen</option><option>LTVP</option></select></div>
-  <div><label>Outcome</label><select id='fOut'><option value=''>All</option><option>approved</option><option>rejected</option><option>pending</option><option>appealed</option></select></div>
-</div>
-<div class='card two'>
-  <div><label>Min Waiting Days</label><input id='fMinWait' type='number' min='0' placeholder='e.g. 30'></div>
-  <div><label>Max Waiting Days</label><input id='fMaxWait' type='number' min='0' placeholder='e.g. 180'></div>
-</div>
-<div class='card row'>
-  <select id='sortBy' style='max-width:220px'><option value='updated_desc'>Latest Updated</option><option value='apply_desc'>Latest Application Date</option><option value='wait_desc'>Longest Waiting</option><option value='wait_asc'>Shortest Waiting</option></select>
-  <select id='pageSize' style='max-width:140px'><option value='10'>10 / page</option><option value='20' selected>20 / page</option><option value='50'>50 / page</option></select>
-  <select id='viewMode' style='max-width:160px'><option value='table' selected>Table View</option><option value='card'>Card View</option></select>
-  <button id='saveFilter' style='max-width:180px'>Save Filter</button><select id='savedList' style='max-width:260px'><option value=''>Load Saved Filter...</option></select><button id='copyLink' style='max-width:180px'>Copy Share Link</button><span id='meta' class='small'></span>
-</div>
-<div id='tableWrap' class='card'><table class='table'><thead><tr><th>Type</th><th>Outcome</th><th>Industry</th><th>Income</th><th>Applied</th><th>Outcome Date</th><th>Waiting</th><th>Action</th></tr></thead><tbody id='tb'></tbody></table></div>
-<div id='cardWrap' class='grid' style='display:none'></div>
-<div class='card row'><button id='prev' style='max-width:120px'>Prev</button><span id='pageInfo' class='small'>Page 1</span><button id='next' style='max-width:120px'>Next</button></div>
-<dialog id='detailDlg' style='max-width:760px;width:92%;background:#0f172a;color:#e9eefc;border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:16px'><h3>Case Details</h3><div id='detailGrid' class='grid'></div><div style='margin-top:12px'><button onclick='detailDlg.close()'>Close</button></div></dialog>
-</main><script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script><script src='../js/config.js'></script><script src='../js/common.js'></script><script>
-let currentPage=1,size=20,totalCount=0,pageItems=[]; const countCache=new Map();
-function key(){return JSON.stringify({t:fType.value||null,o:fOut.value||null,min:fMinWait.value||null,max:fMaxWait.value||null})}
-function applyQuery(){const u=new URL(location.href);fType.value=u.searchParams.get('type')||'';fOut.value=u.searchParams.get('out')||'';fMinWait.value=u.searchParams.get('minw')||'';fMaxWait.value=u.searchParams.get('maxw')||'';sortBy.value=u.searchParams.get('sort')||'updated_desc';currentPage=Number(u.searchParams.get('p')||1);size=Number(u.searchParams.get('s')||20);pageSize.value=String(size);viewMode.value=u.searchParams.get('v')||'table'}
-function syncQuery(){const u=new URL(location.href); [['type',fType.value],['out',fOut.value],['minw',fMinWait.value],['maxw',fMaxWait.value],['sort',sortBy.value],['p',currentPage],['s',size],['v',viewMode.value]].forEach(([k,v])=>{if(v!==''&&v!=null)u.searchParams.set(k,String(v)); else u.searchParams.delete(k)}); history.replaceState({},'',u)}
-function field(label,val){return `<div class='card' style='margin:0'><div class='small'>${label}</div><div>${val??'-'}</div></div>`}
-function openDetail(r){detailGrid.innerHTML=[field('Application Type',r.application_type),field('Outcome Status',r.outcome_status),field('Industry',r.industry),field('Income Band',r.income_band),field('Nationality',r.nationality),field('Marital Status',r.marital_status),field('Family Application',r.family_application),field('Children Count',r.children_count),field('Education',r.education_level),field('Applied Date',fmtDate(r.application_date)),field('Outcome Date',fmtDate(r.outcome_date)),field('Waiting Days',r.waiting_days),field('Notes',r.free_text_notes||'-')].join(''); detailDlg.showModal()}
-window.openDetailByIndex=(i)=>openDetail(pageItems[i]);
-function baseQuery(withCount=false){let q=sb.from('public_cases_with_tags_view').select('*',withCount?{count:'exact'}:undefined); if(fType.value)q=q.eq('application_type',fType.value); if(fOut.value)q=q.eq('outcome_status',fOut.value); if(fMinWait.value)q=q.gte('waiting_days',Number(fMinWait.value)); if(fMaxWait.value)q=q.lte('waiting_days',Number(fMaxWait.value)); if(sortBy.value==='wait_desc') q=q.order('waiting_days',{ascending:false,nullsFirst:false}); else if(sortBy.value==='wait_asc') q=q.order('waiting_days',{ascending:true,nullsFirst:false}); else if(sortBy.value==='apply_desc') q=q.order('application_date',{ascending:false,nullsFirst:false}); else q=q.order('updated_at',{ascending:false,nullsFirst:false}); return q;}
-async function fetchPage(){meta.textContent='Loading...'; const from=(currentPage-1)*size,to=from+size-1; const k=key(); let useCount=!countCache.has(k)||currentPage===1; const {data,error,count}=await baseQuery(useCount).range(from,to); if(error){meta.textContent=error.message; return} pageItems=data||[]; if(useCount){totalCount=count||0; countCache.set(k,totalCount)} else totalCount=countCache.get(k)||0; render()}
-function render(){tb.innerHTML=pageItems.map((r,idx)=>`<tr><td>${r.application_type||'-'}</td><td>${r.outcome_status||'-'}</td><td>${r.industry||'-'}</td><td>${r.income_band||'-'}</td><td>${fmtDate(r.application_date)}</td><td>${fmtDate(r.outcome_date)}</td><td>${r.waiting_days??'-'}</td><td><button onclick='openDetailByIndex(${idx})'>Details</button></td></tr>`).join(''); cardWrap.innerHTML=pageItems.map((r,idx)=>`<article class='card'><h3>${r.application_type||'-'} · ${r.outcome_status||'-'}</h3><p class='small'>Industry: ${r.industry||'-'} · Income: ${r.income_band||'-'}</p><p class='small'>Applied: ${fmtDate(r.application_date)} · Outcome: ${fmtDate(r.outcome_date)} · Waiting: ${r.waiting_days??'-'} days</p><button onclick='openDetailByIndex(${idx})'>Details</button></article>`).join(''); const totalPages=Math.max(1,Math.ceil(totalCount/size)); currentPage=Math.max(1,Math.min(currentPage,totalPages)); tableWrap.style.display=viewMode.value==='card'?'none':'block'; cardWrap.style.display=viewMode.value==='card'?'grid':'none'; meta.textContent=`${totalCount} result(s)`; pageInfo.textContent=`Page ${currentPage}/${totalPages}`; prev.disabled=currentPage<=1; next.disabled=currentPage>=totalPages; syncQuery()}
-async function loadSavedFilters(){const {data:{user}}=await sb.auth.getUser(); if(!user) return; const {data}=await sb.from('saved_filters').select('id,name,filter_json').eq('user_id',user.id).order('created_at',{ascending:false}).limit(30); const arr=data||[]; savedList.innerHTML="<option value=''>Load Saved Filter...</option>"+arr.map(x=>`<option value='${x.id}'>${x.name}</option>`).join(''); window._saved=arr}
-(async()=>{applyQuery(); await fetchPage(); loadSavedFilters();})();
-let fetchTimer=null;
-function debouncedFetch(resetPage=false){
-  if (resetPage) currentPage=1;
-  clearTimeout(fetchTimer);
-  fetchTimer=setTimeout(()=>fetchPage(),220);
-}
-[fType,fOut,sortBy].forEach(el=>el.onchange=()=>debouncedFetch(true));
-[fMinWait,fMaxWait].forEach(el=>el.oninput=()=>debouncedFetch(true));
-pageSize.onchange=()=>{size=Number(pageSize.value)||20; debouncedFetch(true)};
-viewMode.onchange=render;
-prev.onclick=async()=>{currentPage--;await fetchPage()};
-next.onclick=async()=>{currentPage++;await fetchPage()};
-copyLink.onclick=async()=>{await navigator.clipboard.writeText(location.href);meta.textContent='Share link copied.'}
-saveFilter.onclick=async()=>{const {data:{user}}=await sb.auth.getUser(); if(!user){meta.textContent='Login required to save filters.';return}
-const payload={user_id:user.id,name:`${fType.value||'All'}-${fOut.value||'All'}-${new Date().toISOString().slice(0,10)}`,filter_json:{type:fType.value||null,out:fOut.value||null,minw:fMinWait.value||null,maxw:fMaxWait.value||null,sort:sortBy.value,size,page:currentPage,view:viewMode.value}};
-const {error}=await sb.from('saved_filters').insert(payload); meta.textContent=error?error.message:'Filter saved.'; if(!error) loadSavedFilters();}
-savedList.onchange=async()=>{const it=(window._saved||[]).find(x=>x.id===savedList.value); if(!it) return; const f=it.filter_json||{}; fType.value=f.type||''; fOut.value=f.out||''; fMinWait.value=f.minw||''; fMaxWait.value=f.maxw||''; sortBy.value=f.sort||'updated_desc'; size=Number(f.size||20); pageSize.value=String(size); currentPage=Number(f.page||1); viewMode.value=f.view||'table'; await fetchPage(); meta.textContent='Saved filter loaded.'}
-</script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="navCases">案例库</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo-sgcaselens-mark.svg">
+  <link rel="shortcut icon" href="/assets/logo-sgcaselens-mark.svg">
+  <meta name="description" content="浏览新加坡PR、公民申请案例库，按类型、结果、行业、收入筛选，查看案例详情与等待天数。">
+  <meta name="keywords" content="新加坡PR案例,公民案例,申请案例库,PR通过,案例筛选">
+  <meta property="og:title" content="案例库 - 新加坡申请案例洞察">
+  <meta property="og:description" content="浏览并筛选新加坡PR、公民申请案例，查看等待时长与结果分布。">
+  <meta property="og:url" content="https://sgcaselens.github.io/pages/cases.html">
+  <link rel="canonical" href="https://sgcaselens.github.io/pages/cases.html">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/js/theme.js"></script>
+</head>
+<body>
+  <main class="wrap">
+    <nav class="nav">
+      <a class="brand" href="/index.html">
+        <img src="/assets/logo-sgcaselens-mark.svg" alt="SGCaseLens logo">
+        <span class="brand-text" data-i18n="siteName">新加坡申请案例洞察</span>
+      </a>
+      <div class="menu">
+        <a href="/index.html" data-i18n="navDashboard">首页</a>
+        <a class="active" href="/pages/cases.html" data-i18n="navCases">案例库</a>
+        <a href="/pages/submit.html" data-i18n="navSubmit">提交案例</a>
+        <a href="/pages/insights.html" data-i18n="navInsights">我的分析</a>
+        <a href="/pages/trends.html" data-i18n="navTrends">趋势中心</a>
+        <a href="/pages/my-cases.html" data-i18n="myCases">我的案例</a>
+      </div>
+      <span class="theme-switch">
+        <a href="#" class="theme-opt" data-theme="light">Light</a>
+        <span class="sep">|</span>
+        <a href="#" class="theme-opt" data-theme="dark">Dark</a>
+      </span>
+      <span class="lang-switch">
+        <a href="#" class="lang-opt" data-lang="zh" data-i18n="langZh">中文</a>
+        <span class="sep">|</span>
+        <a href="#" class="lang-opt" data-lang="en" data-i18n="langEn">English</a>
+      </span>
+    </nav>
+
+    <div class="card two">
+      <div>
+        <label data-i18n="appType">申请类型</label>
+        <select id="fType">
+          <option value="" data-i18n="all">全部</option>
+          <option value="PR" data-i18n="optPR">PR</option>
+          <option value="Citizen" data-i18n="optCitizen">公民</option>
+          <option value="LTVP" data-i18n="optLTVP">LTVP</option>
+        </select>
+      </div>
+      <div>
+        <label data-i18n="outcome">结果</label>
+        <select id="fOut">
+          <option value="" data-i18n="all">全部</option>
+          <option value="approved" data-i18n="optApproved">通过</option>
+          <option value="rejected" data-i18n="optRejected">拒绝</option>
+          <option value="pending" data-i18n="optPending">待审</option>
+          <option value="appealed" data-i18n="optAppealed">上诉中</option>
+        </select>
+      </div>
+    </div>
+    <div class="card two">
+      <div><label data-i18n="minWait">最小等待天数</label><input id="fMinWait" type="number" min="0" data-i18n="placeholderMinWait" data-i18n-attr="placeholder"></div>
+      <div><label data-i18n="maxWait">最大等待天数</label><input id="fMaxWait" type="number" min="0" data-i18n="placeholderMaxWait" data-i18n-attr="placeholder"></div>
+    </div>
+    <div class="card row">
+      <select id="sortBy" style="max-width:220px">
+        <option value="updated_desc" data-i18n="latestUpdated">最新更新</option>
+        <option value="apply_desc" data-i18n="latestApply">最新申请日</option>
+        <option value="wait_desc" data-i18n="longestWait">最长等待</option>
+        <option value="wait_asc" data-i18n="shortestWait">最短等待</option>
+      </select>
+      <select id="pageSize" style="max-width:140px">
+        <option value="10" data-i18n="perPage10">10 条/页</option>
+        <option value="20" selected data-i18n="perPage20">20 条/页</option>
+        <option value="50" data-i18n="perPage50">50 条/页</option>
+      </select>
+      <select id="viewMode" style="max-width:160px">
+        <option value="table" selected data-i18n="tableView">表格视图</option>
+        <option value="card" data-i18n="cardView">卡片视图</option>
+      </select>
+      <button id="copyLink" style="max-width:180px" data-i18n="copyLink">复制分享链接</button>
+      <span id="meta" class="small"></span>
+    </div>
+
+    <div id="tableWrap" class="card">
+      <table class="table">
+        <thead>
+          <tr>
+            <th data-i18n="type">类型</th>
+            <th data-i18n="outcome">结果</th>
+            <th data-i18n="industry">行业</th>
+            <th data-i18n="income">收入</th>
+            <th data-i18n="applied">申请日</th>
+            <th data-i18n="outcomeDate">结果日期</th>
+            <th data-i18n="waiting">等待</th>
+            <th data-i18n="action">操作</th>
+          </tr>
+        </thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+    <div id="cardWrap" class="grid" style="display:none"></div>
+    <div class="card row">
+      <button id="prev" style="max-width:120px" data-i18n="prev">上一页</button>
+      <span id="pageInfo" class="small">Page 1</span>
+      <button id="next" style="max-width:120px" data-i18n="next">下一页</button>
+    </div>
+
+    <dialog id="detailDlg" class="detail-dlg">
+      <h3 data-i18n="caseDetails">案例详情</h3>
+      <div id="detailGrid" class="grid"></div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <a href="/pages/terms.html" data-i18n="termsLink" style="color:var(--brand);font-size:14px">查看条款和条件</a>
+        <button onclick="detailDlg.close()" data-i18n="close">关闭</button>
+      </div>
+    </dialog>
+  </main>
+
+  <footer class="site-footer">
+    <span data-i18n="copyright">© Copyright 2026. All rights reserved.</span>
+    <span class="footer-sep">·</span>
+    <a href="/pages/terms.html" data-i18n="termsLink">查看条款和条件</a>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/i18n.js"></script>
+  <script>
+    document.querySelectorAll('.theme-opt').forEach((a) => {
+      a.addEventListener('click', (e) => { e.preventDefault(); const t = a.getAttribute('data-theme'); if (theme && theme.getTheme() !== t) { theme.setTheme(t); document.querySelectorAll('.theme-opt').forEach(x => x.classList.toggle('active', x.getAttribute('data-theme') === t)); } });
+    });
+    document.querySelectorAll('.theme-opt').forEach((a) => a.classList.toggle('active', a.getAttribute('data-theme') === (theme?.getTheme() || 'dark')));
+    document.querySelectorAll('.lang-opt').forEach((a) => {
+      a.addEventListener('click', (e) => { e.preventDefault(); if (i18n.getLang() !== a.getAttribute('data-lang')) { i18n.setLang(a.getAttribute('data-lang')); location.reload(); } });
+    });
+
+    let currentPage = 1;
+    let size = 20;
+    let totalCount = 0;
+    let pageItems = [];
+    const countCache = new Map();
+
+    function key() {
+      return JSON.stringify({
+        t: fType.value || null,
+        o: fOut.value || null,
+        min: fMinWait.value || null,
+        max: fMaxWait.value || null
+      });
+    }
+
+    function applyQuery() {
+      const u = new URL(location.href);
+      fType.value = u.searchParams.get('type') || '';
+      fOut.value = u.searchParams.get('out') || '';
+      fMinWait.value = u.searchParams.get('minw') || '';
+      fMaxWait.value = u.searchParams.get('maxw') || '';
+      sortBy.value = u.searchParams.get('sort') || 'updated_desc';
+      currentPage = Number(u.searchParams.get('p') || 1);
+      size = Number(u.searchParams.get('s') || 20);
+      pageSize.value = String(size);
+      viewMode.value = u.searchParams.get('v') || 'table';
+    }
+
+    function syncQuery() {
+      const u = new URL(location.href);
+      [
+        ['type', fType.value],
+        ['out', fOut.value],
+        ['minw', fMinWait.value],
+        ['maxw', fMaxWait.value],
+        ['sort', sortBy.value],
+        ['p', currentPage],
+        ['s', size],
+        ['v', viewMode.value]
+      ].forEach(([k, v]) => {
+        if (v !== '' && v != null) u.searchParams.set(k, String(v));
+        else u.searchParams.delete(k);
+      });
+      history.replaceState({}, '', u);
+    }
+
+    function field(label, val) {
+      const disp = val == null ? '-' : (typeof val === 'boolean' ? tOpt(val) : (tOpt(val) ?? val));
+      return `<div class="card" style="margin:0"><div class="small">${escapeHtml(label)}</div><div>${escapeHtml(String(disp))}</div></div>`;
+    }
+
+    function openDetail(r) {
+      detailGrid.innerHTML = [
+        field(t('appTypeLabel'), r.application_type),
+        field(t('outcomeStatus'), r.outcome_status),
+        field(t('industry'), r.industry),
+        field(t('incomeBand'), r.income_band),
+        field(t('nationality'), r.nationality),
+        field(t('maritalStatus'), r.marital_status),
+        field(t('familyApp'), r.family_application),
+        field(t('childrenCount'), r.children_count),
+        field(t('education'), r.education_level),
+        field(t('appliedDate'), fmtDate(r.application_date)),
+        field(t('outcomeDateLabel'), fmtDate(r.outcome_date)),
+        field(t('waitingDays'), r.waiting_days),
+        field(t('notes'), r.free_text_notes || '-')
+      ].join('');
+      detailDlg.showModal();
+      detailDlg.scrollTop = 0;
+      detailGrid.scrollTop = 0;
+    }
+
+    window.openDetailByIndex = (i) => openDetail(pageItems[i]);
+
+    function baseQuery(withCount = false) {
+      let q = sb.from('public_cases_with_tags_view').select('*', withCount ? { count: 'exact' } : undefined);
+      if (fType.value) q = q.eq('application_type', fType.value);
+      if (fOut.value) q = q.eq('outcome_status', fOut.value);
+      if (fMinWait.value) q = q.gte('waiting_days', Number(fMinWait.value));
+      if (fMaxWait.value) q = q.lte('waiting_days', Number(fMaxWait.value));
+      if (sortBy.value === 'wait_desc') q = q.order('waiting_days', { ascending: false, nullsFirst: false });
+      else if (sortBy.value === 'wait_asc') q = q.order('waiting_days', { ascending: true, nullsFirst: false });
+      else if (sortBy.value === 'apply_desc') q = q.order('application_date', { ascending: false, nullsFirst: false });
+      else q = q.order('updated_at', { ascending: false, nullsFirst: false });
+      return q;
+    }
+
+    async function fetchPage() {
+      meta.textContent = t('loading');
+      const from = (currentPage - 1) * size;
+      const to = from + size - 1;
+      const k = key();
+      const useCount = !countCache.has(k) || currentPage === 1;
+      const { data, error, count } = await baseQuery(useCount).range(from, to);
+      if (error) { meta.textContent = error.message; return; }
+      pageItems = data || [];
+      if (useCount) { totalCount = count || 0; countCache.set(k, totalCount); }
+      else totalCount = countCache.get(k) || 0;
+      render();
+    }
+
+    function render() {
+      const esc = (v) => escapeHtml(v ?? '-');
+      tb.innerHTML = pageItems.map((r, idx) =>
+        `<tr>
+          <td>${esc(tOpt(r.application_type) ?? r.application_type)}</td>
+          <td>${esc(tOpt(r.outcome_status) ?? r.outcome_status)}</td>
+          <td>${esc(tOpt(r.industry) ?? r.industry)}</td>
+          <td>${esc(tOpt(r.income_band) ?? r.income_band)}</td>
+          <td>${escapeHtml(fmtDate(r.application_date))}</td>
+          <td>${escapeHtml(fmtDate(r.outcome_date))}</td>
+          <td>${escapeHtml(r.waiting_days ?? '-')}</td>
+          <td><button onclick="openDetailByIndex(${idx})">${escapeHtml(t('details'))}</button></td>
+        </tr>`
+      ).join('');
+      cardWrap.innerHTML = pageItems.map((r, idx) =>
+        `<article class="card">
+          <h3>${esc(tOpt(r.application_type) ?? r.application_type)} · ${esc(tOpt(r.outcome_status) ?? r.outcome_status)}</h3>
+          <p class="small">${escapeHtml(t('industry'))}: ${esc(tOpt(r.industry) ?? r.industry)} · ${escapeHtml(t('income'))}: ${esc(tOpt(r.income_band) ?? r.income_band)}</p>
+          <p class="small">${escapeHtml(t('applied'))}: ${escapeHtml(fmtDate(r.application_date))} · ${escapeHtml(t('outcome'))}: ${escapeHtml(fmtDate(r.outcome_date))} · ${escapeHtml(t('waiting'))}: ${escapeHtml(r.waiting_days ?? '-')} ${escapeHtml(t('daysUnit'))}</p>
+          <button onclick="openDetailByIndex(${idx})">${escapeHtml(t('details'))}</button>
+        </article>`
+      ).join('');
+      const totalPages = Math.max(1, Math.ceil(totalCount / size));
+      currentPage = Math.max(1, Math.min(currentPage, totalPages));
+      tableWrap.style.display = viewMode.value === 'card' ? 'none' : 'block';
+      cardWrap.style.display = viewMode.value === 'card' ? 'grid' : 'none';
+      meta.textContent = `${totalCount} ${t('results')}`;
+      pageInfo.textContent = `${t('page')} ${currentPage}/${totalPages}`;
+      prev.disabled = currentPage <= 1;
+      next.disabled = currentPage >= totalPages;
+      syncQuery();
+    }
+
+    (async () => {
+      applyQuery();
+      await fetchPage();
+    })();
+
+    let fetchTimer = null;
+    function debouncedFetch(resetPage = false) {
+      if (resetPage) currentPage = 1;
+      clearTimeout(fetchTimer);
+      fetchTimer = setTimeout(() => fetchPage(), 220);
+    }
+
+    [fType, fOut, sortBy].forEach(el => (el.onchange = () => debouncedFetch(true)));
+    [fMinWait, fMaxWait].forEach(el => (el.oninput = () => debouncedFetch(true)));
+    pageSize.onchange = () => { size = Number(pageSize.value) || 20; debouncedFetch(true); };
+    viewMode.onchange = render;
+    prev.onclick = async () => { currentPage--; await fetchPage(); };
+    next.onclick = async () => { currentPage++; await fetchPage(); };
+    copyLink.onclick = async () => {
+      await navigator.clipboard.writeText(location.href);
+      meta.textContent = t('shareCopied');
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<svg width="1200" height="320" viewBox="0 0 1200 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="320" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EF4444"/>
+      <stop offset="1" stop-color="#DC2626"/>
+    </linearGradient>
+    <linearGradient id="barGrad" x1="120" y1="220" x2="220" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#BFDBFE"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Mark container -->
+  <rect x="24" y="24" width="272" height="272" rx="56" fill="url(#bgGrad)"/>
+
+  <!-- Top-left abstract accent (non-flag) -->
+  <circle cx="96" cy="96" r="30" fill="#FEE2E2" fill-opacity="0.9"/>
+  <circle cx="96" cy="96" r="16" fill="#FFFFFF" fill-opacity="0.9"/>
+
+  <!-- Merlion-inspired abstract -->
+  <path d="M78 190C96 158 134 144 170 152C188 132 218 130 242 142C236 154 226 162 214 168C232 174 246 186 252 204C232 212 198 214 172 208C146 230 108 236 78 228C70 214 70 202 78 190Z" fill="#FFFFFF" fill-opacity="0.95"/>
+
+  <!-- Lens ring -->
+  <circle cx="198" cy="206" r="42" stroke="#FEE2E2" stroke-width="10"/>
+  <circle cx="198" cy="206" r="20" fill="#FEE2E2" fill-opacity="0.9"/>
+
+  <!-- Data bars inside lens -->
+  <rect x="182" y="210" width="6" height="14" rx="2" fill="url(#barGrad)"/>
+  <rect x="192" y="202" width="6" height="22" rx="2" fill="url(#barGrad)"/>
+  <rect x="202" y="196" width="6" height="28" rx="2" fill="url(#barGrad)"/>
+  <rect x="212" y="188" width="6" height="36" rx="2" fill="url(#barGrad)"/>
+
+  <!-- Wordmark -->
+  <text x="334" y="136" fill="#0F172A" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="58" font-weight="800" letter-spacing="0.5">SGCaseLens</text>
+  <text x="336" y="184" fill="#334155" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24" font-weight="600">Singapore Application Insights</text>
+  <text x="336" y="224" fill="#64748B" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22" font-weight="500">ùùa3ùHùù</text>
+</svg>

@@ -1,0 +1,30 @@
+<svg width="1200" height="320" viewBox="0 0 1200 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1200" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1D4ED8"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(280 120) rotate(90) scale(180 280)">
+      <stop offset="0" stop-color="#93C5FD" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#93C5FD" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(950 190) rotate(90) scale(210 360)">
+      <stop offset="0" stop-color="#C4B5FD" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#C4B5FD" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="320" rx="20" fill="url(#g1)"/>
+  <ellipse cx="280" cy="120" rx="280" ry="180" fill="url(#glow1)"/>
+  <ellipse cx="950" cy="190" rx="360" ry="210" fill="url(#glow2)"/>
+
+  <!-- abstract paper plane -->
+  <path d="M875 84L1078 142L858 202L906 150L875 84Z" fill="#DBEAFE" fill-opacity="0.92"/>
+  <path d="M858 202L932 154L962 214L858 202Z" fill="#BFDBFE" fill-opacity="0.9"/>
+
+  <!-- abstract bars -->
+  <rect x="120" y="206" width="14" height="48" rx="4" fill="#DBEAFE" fill-opacity="0.8"/>
+  <rect x="144" y="184" width="14" height="70" rx="4" fill="#DBEAFE" fill-opacity="0.82"/>
+  <rect x="168" y="162" width="14" height="92" rx="4" fill="#DBEAFE" fill-opacity="0.85"/>
+  <rect x="192" y="142" width="14" height="112" rx="4" fill="#DBEAFE" fill-opacity="0.88"/>
+</svg>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="myCases">我的案例</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/logo-sgcaselens-mark.svg">
+  <link rel="shortcut icon" href="/assets/logo-sgcaselens-mark.svg">
+  <meta name="description" content="通过昵称和生日查找您提交的案例，可编辑或管理。">
+  <meta name="robots" content="noindex">
+  <link rel="canonical" href="https://sgcaselens.github.io/pages/my-cases.html">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/js/theme.js"></script>
+</head>
+<body>
+  <main class="wrap">
+    <nav class="nav">
+      <a class="brand" href="/index.html">
+        <img src="/assets/logo-sgcaselens-mark.svg" alt="SGCaseLens logo">
+        <span class="brand-text" data-i18n="siteName">新加坡申请案例洞察</span>
+      </a>
+      <div class="menu">
+        <a href="/index.html" data-i18n="navDashboard">首页</a>
+        <a href="/pages/cases.html" data-i18n="navCases">案例库</a>
+        <a href="/pages/submit.html" data-i18n="navSubmit">提交案例</a>
+        <a href="/pages/insights.html" data-i18n="navInsights">我的分析</a>
+        <a href="/pages/trends.html" data-i18n="navTrends">趋势中心</a>
+        <a class="active" href="/pages/my-cases.html" data-i18n="myCases">我的案例</a>
+      </div>
+      <span class="theme-switch">
+        <a href="#" class="theme-opt" data-theme="light">Light</a>
+        <span class="sep">|</span>
+        <a href="#" class="theme-opt" data-theme="dark">Dark</a>
+      </span>
+      <span class="lang-switch">
+        <a href="#" class="lang-opt" data-lang="zh" data-i18n="langZh">中文</a>
+        <span class="sep">|</span>
+        <a href="#" class="lang-opt" data-lang="en" data-i18n="langEn">English</a>
+      </span>
+    </nav>
+
+    <div class="card">
+      <h3 data-i18n="myCases">我的案例</h3>
+      <p class="small" data-i18n="myCasesDesc">输入昵称和生日以查找您提交的案例，可在任意设备使用。</p>
+    </div>
+
+    <div id="my-cases-app" class="card">
+      <div v-if="!searched" class="card" style="padding:16px">
+        <label>{{ t('verifyToEdit') }}</label>
+        <p class="small" style="margin:4px 0 12px">{{ t('myCasesDesc') }}</p>
+        <div class="two" style="margin-bottom:12px">
+          <div>
+            <label>{{ t('nickname') }}</label>
+            <input v-model="nickname" maxlength="60" :placeholder="t('nickname')">
+          </div>
+          <div>
+            <label>{{ t('birthLabel') }}</label>
+            <div class="row" style="gap:8px;margin:0">
+              <select v-model="birth_month" style="flex:1">
+                <option value="">{{ t('birthMonth') }}</option>
+                <option v-for="m in 12" :key="m" :value="String(m)">{{ m }} {{ t('birthMonth') }}</option>
+              </select>
+              <select v-model="birth_day" style="flex:1">
+                <option value="">{{ t('birthDay') }}</option>
+                <option v-for="d in 31" :key="d" :value="String(d)">{{ d }} {{ t('birthDay') }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button @click="findCases" style="max-width:200px">{{ t('findMyCases') }}</button>
+        <p class="small err" v-if="findErr">{{ findErr }}</p>
+      </div>
+      <div v-else>
+        <p v-if="list.length === 0" class="small">{{ t('myCasesEmpty') }}</p>
+        <ul v-else style="list-style:none;padding:0;margin:0">
+          <li v-for="item in list" :key="item.id" class="card" style="margin:8px 0;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <span>
+              {{ tOpt(item.application_type) ?? item.application_type }} · {{ tOpt(item.outcome_status) ?? item.outcome_status }}
+              <span class="small" v-if="item.application_date"> · {{ item.application_date }}</span>
+            </span>
+            <a href="#" @click.prevent="goEdit(item.id)" style="color:var(--brand)">{{ t('editCase') }}</a>
+          </li>
+        </ul>
+        <button v-if="searched" @click="searched=false;list=[];findErr=''" style="max-width:120px;margin-top:12px">{{ t('prev') }}</button>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span data-i18n="copyright">© Copyright 2026. All rights reserved.</span>
+    <span class="footer-sep">·</span>
+    <a href="/pages/terms.html" data-i18n="termsLink">查看条款和条件</a>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/i18n.js"></script>
+  <script>
+    document.querySelectorAll('.theme-opt').forEach((a) => {
+      a.addEventListener('click', (e) => { e.preventDefault(); const t = a.getAttribute('data-theme'); if (theme && theme.getTheme() !== t) { theme.setTheme(t); document.querySelectorAll('.theme-opt').forEach(x => x.classList.toggle('active', x.getAttribute('data-theme') === t)); } });
+    });
+    document.querySelectorAll('.theme-opt').forEach((a) => a.classList.toggle('active', a.getAttribute('data-theme') === (theme?.getTheme() || 'dark')));
+    document.querySelectorAll('.lang-opt').forEach((a) => {
+      a.addEventListener('click', (e) => { e.preventDefault(); if (i18n.getLang() !== a.getAttribute('data-lang')) { i18n.setLang(a.getAttribute('data-lang')); location.reload(); } });
+    });
+
+    const { createApp } = Vue;
+    createApp({
+      data() {
+        return { nickname: '', birth_month: '', birth_day: '', list: [], searched: false, findErr: '' };
+      },
+      methods: {
+        t(key) { return typeof window.t === 'function' ? window.t(key) : key; },
+        tOpt(val) { return typeof window.tOpt === 'function' ? window.tOpt(val) : val; },
+        async sha256hex(s) {
+          const buf = new TextEncoder().encode(s);
+          const h = await crypto.subtle.digest('SHA-256', buf);
+          return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2,'0')).join('');
+        },
+        async findCases() {
+          this.findErr = '';
+          const nk = (this.nickname || '').trim().toLowerCase().replace(/\s/g,'');
+          const bm = String(this.birth_month || '').padStart(2,'0');
+          const bd = String(this.birth_day || '').padStart(2,'0');
+          if (!nk || !bm || !bd) { this.findErr = this.t('birthRequired'); return; }
+          const hash = await this.sha256hex(nk + bm + bd);
+          const { data, error } = await sb.rpc('get_submissions_by_verify', { p_verify_key_hash: hash });
+          if (error) { this.findErr = error.message; return; }
+          this.list = Array.isArray(data) ? data : (data ? [data] : []);
+          this._verifyHash = hash;
+          this.searched = true;
+        },
+        goEdit(id) {
+          if (this._verifyHash) sessionStorage.setItem('sg_verify_' + id, this._verifyHash);
+          location.href = '/pages/edit.html?id=' + id;
+        }
+      }
+    }).mount('#my-cases-app');
+  </script>
+</body>
+</html>
