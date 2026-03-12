@@ -149,18 +149,18 @@
         : sorted[b];
     }
 
-    function drawAll(arr) {
+    function drawAll(arr, stats) {
       const now = Date.now();
       const cc = theme?.getChartColors?.() || { text: '#e9eefc', muted: '#9fb0ce' };
 
-      kTotal.textContent = arr.length;
-      k30.textContent = arr.filter(x => now - new Date(x.created_at).getTime() < 30 * 86400000).length;
+      kTotal.textContent = stats?.total ?? arr.length;
+      k30.textContent = stats?.new30 ?? arr.filter(x => now - new Date(x.created_at).getTime() < 30 * 86400000).length;
 
       const c = { approved: 0, rejected: 0, pending: 0, appealed: 0 };
       arr.forEach(x => (c[x.outcome_status] = (c[x.outcome_status] || 0) + 1));
-      kA.textContent = c.approved || 0;
-      kR.textContent = c.rejected || 0;
-      kP.textContent = c.pending || 0;
+      kA.textContent = stats?.approved ?? (c.approved || 0);
+      kR.textContent = stats?.rejected ?? (c.rejected || 0);
+      kP.textContent = stats?.pending ?? (c.pending || 0);
 
       const ws = arr.map(x => x.waiting_days).filter(v => v != null).sort((a, b) => a - b);
       kW.textContent = ws.length ? Math.round(ws.reduce((a, b) => a + b, 0) / ws.length) : '-';
@@ -230,26 +230,52 @@
     }
 
     (async () => {
-      const cacheKey = 'sg_dashboard_cache_v2';
+      const cacheKey = 'sg_dashboard_cache_v3';
       const cache = localStorage.getItem(cacheKey);
       let arr = [];
+      let stats = null;
       if (cache) {
         try {
           const o = JSON.parse(cache);
-          if (Date.now() - o.ts < 300000) arr = o.data || [];
+          if (Date.now() - o.ts < 300000) {
+            arr = o.data || [];
+            stats = o.stats || null;
+          }
         } catch {}
       }
-      if (!arr.length) {
-        const { data, error } = await sb.from('public_cases_view').select('*').order('created_at', { ascending: false }).limit(1000);
-        if (error) { alert(error.message); return; }
-        arr = data || [];
-        localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: arr }));
+      if (!arr.length || !stats) {
+        const since30 = new Date(Date.now() - 30 * 86400000).toISOString();
+        const [
+          dataRes,
+          totalRes,
+          new30Res,
+          approvedRes,
+          rejectedRes,
+          pendingRes
+        ] = await Promise.all([
+          sb.from('public_cases_view').select('*').order('created_at', { ascending: false }).limit(1000),
+          sb.from('public_cases_view').select('*', { count: 'exact', head: true }),
+          sb.from('public_cases_view').select('*', { count: 'exact', head: true }).gte('created_at', since30),
+          sb.from('public_cases_view').select('*', { count: 'exact', head: true }).eq('outcome_status', 'approved'),
+          sb.from('public_cases_view').select('*', { count: 'exact', head: true }).eq('outcome_status', 'rejected'),
+          sb.from('public_cases_view').select('*', { count: 'exact', head: true }).eq('outcome_status', 'pending')
+        ]);
+        if (dataRes.error) { alert(dataRes.error.message); return; }
+        arr = dataRes.data || [];
+        stats = {
+          total: totalRes?.count ?? arr.length,
+          new30: new30Res?.count ?? arr.filter(x => Date.now() - new Date(x.created_at).getTime() < 30 * 86400000).length,
+          approved: approvedRes?.count ?? 0,
+          rejected: rejectedRes?.count ?? 0,
+          pending: pendingRes?.count ?? 0
+        };
+        localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: arr, stats }));
       }
 
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(e => {
           if (e.isIntersecting) {
-            drawAll(arr);
+            drawAll(arr, stats);
             observer.disconnect();
           }
         });
@@ -259,7 +285,7 @@
       window.addEventListener('resize', () => {
         if (window._charts) window._charts.forEach(c => c.resize());
       });
-      document.addEventListener('themechange', () => { if (arr.length) drawAll(arr); });
+      document.addEventListener('themechange', () => { if (arr.length) drawAll(arr, stats); });
     })();
   </script>
 </body>
