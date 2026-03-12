@@ -1,1 +1,25 @@
-!function(){const e="sg_theme";function t(){return"dark"===localStorage.getItem(e)?"dark":"light"}function n(){const e=t();document.documentElement.setAttribute("data-theme",e)}window.theme={getTheme:t,setTheme:function(t){localStorage.setItem(e,t),n(),document.dispatchEvent(new CustomEvent("themechange"))},applyTheme:n,getChartColors:function(){return"light"===t()?{text:"#1e293b",muted:"#64748b"}:{text:"#e9eefc",muted:"#9fb0ce"}}},n()}();
+!(function () {
+  const e = "sg_theme";
+  function t() {
+    return "dark" === localStorage.getItem(e) ? "dark" : "light";
+  }
+  function n() {
+    const e = t();
+    document.documentElement.setAttribute("data-theme", e);
+  }
+  ((window.theme = {
+    getTheme: t,
+    setTheme: function (t) {
+      (localStorage.setItem(e, t),
+        n(),
+        document.dispatchEvent(new CustomEvent("themechange")));
+    },
+    applyTheme: n,
+    getChartColors: function () {
+      return "light" === t()
+        ? { text: "#1e293b", muted: "#64748b" }
+        : { text: "#e9eefc", muted: "#9fb0ce" };
+    },
+  }),
+    n());
+})();

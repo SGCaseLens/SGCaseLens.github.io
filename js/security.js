@@ -1,1 +1,72 @@
-!function(){const t=["telegram","whatsapp","wechat","微信","loan","casino","赌博","色情","spam","porn","viagra","crypto","bitcoin","投资理财","代考","办证"],e=[/<script\b/i,/javascript\s*:/i,/vbscript\s*:/i,/data\s*:/i,/on\w+\s*=/i,/\beval\s*\(/i,/expression\s*\(/i,/<iframe/i,/<object/i,/<embed/i,/<img[^>]+onerror/i,/<svg[^>]+onload/i,/<body[^>]+onload/i];function n(e){if(!e||"string"!=typeof e)return null;const n=e.toLowerCase();return t.find(t=>n.includes(t.toLowerCase()))||null}function s(t){return!(!t||"string"!=typeof t)&&e.some(e=>e.test(t))}const i="sg_submit_ts";window.sgSecurity={BLOCKED_WORDS:t,hasBlockedWord:n,hasXssPattern:s,validateUserInput:function(t,e){const i={},o=n((t||"")+" "+(e||""));return o&&(i.free_text_notes={type:"riskWord",word:o}),s(t||"")&&(i.nickname={type:"invalidChars"}),s(e||"")&&(i.free_text_notes=i.free_text_notes||{type:"invalidChars"}),i},canSubmit:function(){const t=parseInt(sessionStorage.getItem(i)||"0",10);return Date.now()-t>=3e4},recordSubmit:function(){sessionStorage.setItem(i,String(Date.now()))},getRateLimitRemainingMs:function(){const t=parseInt(sessionStorage.getItem(i)||"0",10),e=Date.now()-t;return Math.max(0,3e4-e)}}}();
+!(function () {
+  const t = [
+      "telegram",
+      "whatsapp",
+      "wechat",
+      "微信",
+      "loan",
+      "casino",
+      "赌博",
+      "色情",
+      "spam",
+      "porn",
+      "viagra",
+      "crypto",
+      "bitcoin",
+      "投资理财",
+      "代考",
+      "办证",
+    ],
+    e = [
+      /<script\b/i,
+      /javascript\s*:/i,
+      /vbscript\s*:/i,
+      /data\s*:/i,
+      /on\w+\s*=/i,
+      /\beval\s*\(/i,
+      /expression\s*\(/i,
+      /<iframe/i,
+      /<object/i,
+      /<embed/i,
+      /<img[^>]+onerror/i,
+      /<svg[^>]+onload/i,
+      /<body[^>]+onload/i,
+    ];
+  function n(e) {
+    if (!e || "string" != typeof e) return null;
+    const n = e.toLowerCase();
+    return t.find((t) => n.includes(t.toLowerCase())) || null;
+  }
+  function s(t) {
+    return !(!t || "string" != typeof t) && e.some((e) => e.test(t));
+  }
+  const i = "sg_submit_ts";
+  window.sgSecurity = {
+    BLOCKED_WORDS: t,
+    hasBlockedWord: n,
+    hasXssPattern: s,
+    validateUserInput: function (t, e) {
+      const i = {},
+        o = n((t || "") + " " + (e || ""));
+      return (
+        o && (i.free_text_notes = { type: "riskWord", word: o }),
+        s(t || "") && (i.nickname = { type: "invalidChars" }),
+        s(e || "") &&
+          (i.free_text_notes = i.free_text_notes || { type: "invalidChars" }),
+        i
+      );
+    },
+    canSubmit: function () {
+      const t = parseInt(sessionStorage.getItem(i) || "0", 10);
+      return Date.now() - t >= 3e4;
+    },
+    recordSubmit: function () {
+      sessionStorage.setItem(i, String(Date.now()));
+    },
+    getRateLimitRemainingMs: function () {
+      const t = parseInt(sessionStorage.getItem(i) || "0", 10),
+        e = Date.now() - t;
+      return Math.max(0, 3e4 - e);
+    },
+  };
+})();

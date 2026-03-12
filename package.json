@@ -6,6 +6,7 @@
     "minify-js": "sh -c 'for f in js/*.js; do terser \"$f\" -c -m -o \"$f\"; done'"
   },
   "devDependencies": {
+    "playwright": "^1.49.0",
     "terser": "^5.46.0"
   }
 }

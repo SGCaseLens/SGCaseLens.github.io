@@ -1,0 +1,5 @@
+node_modules/
+smoke-test.mjs
+
+# macOS
+.DS_Store

@@ -1,1 +1,92 @@
-function fmtDate(e){if(!e)return"-";const t=new Date(e);return isNaN(t)?e:t.toLocaleDateString("en-SG")}function days(e,t){return e&&t?Math.floor((new Date(t)-new Date(e))/864e5):null}function escapeHtml(e){return null==e?"":String(e).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}function mountHelpWidget(){if(!document.body||document.querySelector(".help-widget"))return;const e=(e,t)=>"function"==typeof window.t?window.t(e):t,t=document.createElement("div");t.className="help-widget",t.innerHTML=`\n    <button type="button" class="help-widget-toggle" aria-expanded="false">\n      ${escapeHtml(e("helpWidgetLabel","Need help?"))}\n    </button>\n    <div class="help-widget-panel" role="dialog" aria-label="${escapeHtml(e("helpWidgetTitle","May I help you?"))}">\n      <h4>${escapeHtml(e("helpWidgetTitle","May I help you?"))}</h4>\n      <p class="small">${escapeHtml(e("helpWidgetDesc","Quick actions to get started:"))}</p>\n      <div class="help-widget-links">\n        <a href="/pages/submit.html">${escapeHtml(e("helpWidgetSubmit","Submit my case"))}</a>\n        <a href="/pages/my-cases.html">${escapeHtml(e("helpWidgetMyCases","View my cases"))}</a>\n        <a href="/pages/cases.html">${escapeHtml(e("helpWidgetCases","Browse cases"))}</a>\n        <a href="/pages/terms.html">${escapeHtml(e("helpWidgetTerms","Terms and Conditions"))}</a>\n      </div>\n    </div>\n  `,document.body.appendChild(t);const a=t.querySelector(".help-widget-toggle");a.addEventListener("click",()=>{const e=t.classList.toggle("open");a.setAttribute("aria-expanded",e?"true":"false")}),document.addEventListener("click",e=>{t.contains(e.target)||(t.classList.remove("open"),a.setAttribute("aria-expanded","false"))})}window.sb=window.supabase.createClient(window.SG.supabaseUrl,window.SG.supabaseAnonKey),"loading"===document.readyState?document.addEventListener("DOMContentLoaded",mountHelpWidget):mountHelpWidget();
+window.sb =
+  window.supabase && window.SG
+    ? window.supabase.createClient(window.SG.supabaseUrl, window.SG.supabaseAnonKey)
+    : null;
+
+function fmtDate(v) {
+  if (!v) return "-";
+  const d = new Date(v);
+  return isNaN(d) ? v : d.toLocaleDateString("en-SG");
+}
+
+function days(a, b) {
+  if (!a || !b) return null;
+  return Math.floor((new Date(b) - new Date(a)) / 86400000);
+}
+
+function escapeHtml(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function mountHelpWidget() {
+  if (!document.body || document.querySelector(".help-widget")) return;
+  const pick = (key, fallback) =>
+    typeof window.t === "function" ? window.t(key) : fallback;
+
+  const root = document.createElement("div");
+  root.className = "help-widget";
+  root.innerHTML = `
+    <button type="button" class="help-widget-toggle" aria-expanded="false">
+      ${escapeHtml(pick("helpWidgetLabel", "Need help?"))}
+    </button>
+    <div class="help-widget-panel" role="dialog" aria-label="${escapeHtml(pick("helpWidgetTitle", "May I help you?"))}">
+      <h4>${escapeHtml(pick("helpWidgetTitle", "May I help you?"))}</h4>
+      <p class="small">${escapeHtml(pick("helpWidgetDesc", "Quick actions to get started:"))}</p>
+      <div class="help-widget-links">
+        <a href="/pages/submit.html">${escapeHtml(pick("helpWidgetSubmit", "Submit my case"))}</a>
+        <a href="/pages/my-cases.html">${escapeHtml(pick("helpWidgetMyCases", "View my cases"))}</a>
+        <a href="/pages/cases.html">${escapeHtml(pick("helpWidgetCases", "Browse cases"))}</a>
+        <a href="/pages/terms.html">${escapeHtml(pick("helpWidgetTerms", "Terms and Conditions"))}</a>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(root);
+
+  const btn = root.querySelector(".help-widget-toggle");
+  btn.addEventListener("click", () => {
+    const opened = root.classList.toggle("open");
+    btn.setAttribute("aria-expanded", opened ? "true" : "false");
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!root.contains(e.target)) {
+      root.classList.remove("open");
+      btn.setAttribute("aria-expanded", "false");
+    }
+  });
+}
+
+function initGoogleAnalytics() {
+  const id = window.SG && window.SG.gaMeasurementId;
+  if (!id || id === "G-XXXXXXXXXX" || window.__sgGaInited) return;
+  window.__sgGaInited = true;
+
+  const s = document.createElement("script");
+  s.async = true;
+  s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id)}`;
+  document.head.appendChild(s);
+
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    window.dataLayer.push(arguments);
+  }
+  window.gtag = window.gtag || gtag;
+  window.gtag("js", new Date());
+  window.gtag("config", id, { anonymize_ip: true });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    mountHelpWidget();
+    initGoogleAnalytics();
+  });
+} else {
+  mountHelpWidget();
+  initGoogleAnalytics();
+}
